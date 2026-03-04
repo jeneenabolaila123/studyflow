@@ -24,10 +24,3 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__ . '/auth.php';
-
-Route::get('/api/ping', function () {
-    return response()->json([
-        'ok' => true,
-        'message' => 'API is working'
-    ]);
-});

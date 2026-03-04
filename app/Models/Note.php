@@ -15,12 +15,17 @@ class Note extends Model
         'mime_type',
         'file_size',
         'status',
+        'source_type',
+        'text_content',
+        'ai_summary',
+        'ai_summary_generated_at',
     ];
 
     protected function casts(): array
     {
         return [
             'file_size' => 'integer',
+            'ai_summary_generated_at' => 'datetime',
         ];
     }
 
