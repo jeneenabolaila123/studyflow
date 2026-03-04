@@ -2,35 +2,126 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\Note;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class NoteController extends Controller
 {
-    public function create()
+    // GET /api/notes
+    public function index(Request $request)
     {
-        return view('notes.create');
+        $notes = Note::where('user_id', $request->user()->id)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'data' => $notes
+        ]);
     }
 
+    // POST /api/notes  (Upload PDF)
     public function store(Request $request)
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'content' => ['required', 'string', 'min:50'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            // ✅ change max as you want (KB). 51200 = 50MB, 102400 = 100MB
+            'pdf' => ['required', 'file', 'mimes:pdf', 'max:51200'],
         ]);
+
+        $file = $request->file('pdf');
+
+        $path = $file->store('notes_pdfs', 'public');
 
         $note = Note::create([
             'user_id' => $request->user()->id,
             'title' => $data['title'],
-            'content' => $data['content'],
+            'description' => $data['description'] ?? null,
+            'pdf_path' => $path,
+            'mime_type' => $file->getClientMimeType(),
+            'file_size' => $file->getSize(),
+            'status' => 'uploaded',
         ]);
 
-        return redirect()->route('notes.show', $note);
+        return response()->json([
+            'message' => 'PDF uploaded successfully.',
+            'data' => $note,
+        ], 201);
     }
 
-    public function show(Note $note)
+    // GET /api/notes/{id}
+    public function show(Request $request, $id)
     {
-        abort_unless(auth()->id() === $note->user_id, 403);
-        return view('notes.show', compact('note'));
+        $note = Note::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        return response()->json([
+            'data' => $note
+        ]);
+    }
+
+    // PUT/PATCH /api/notes/{id}
+    public function update(Request $request, $id)
+    {
+        $note = Note::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'title' => ['sometimes', 'required', 'string', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            // optional replace pdf
+            'pdf' => ['sometimes', 'file', 'mimes:pdf', 'max:51200'],
+        ]);
+
+        if (array_key_exists('title', $data)) {
+            $note->title = $data['title'];
+        }
+        if (array_key_exists('description', $data)) {
+            $note->description = $data['description'];
+        }
+
+        if ($request->hasFile('pdf')) {
+            // delete old
+            if ($note->pdf_path && Storage::disk('public')->exists($note->pdf_path)) {
+                Storage::disk('public')->delete($note->pdf_path);
+            }
+
+            $file = $request->file('pdf');
+            $path = $file->store('notes_pdfs', 'public');
+
+            $note->pdf_path = $path;
+            $note->mime_type = $file->getClientMimeType();
+            $note->file_size = $file->getSize();
+            $note->status = 'uploaded';
+        }
+
+        $note->save();
+
+        return response()->json([
+            'message' => 'Note updated.',
+            'data' => $note,
+        ]);
+    }
+
+    // DELETE /api/notes/{id}
+    public function destroy(Request $request, $id)
+    {
+        $note = Note::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        if ($note->pdf_path && Storage::disk('public')->exists($note->pdf_path)) {
+            Storage::disk('public')->delete($note->pdf_path);
+        }
+
+        $note->delete();
+
+        return response()->json([
+            'message' => 'Note deleted.'
+        ]);
     }
 }
