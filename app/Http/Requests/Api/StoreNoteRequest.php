@@ -15,8 +15,14 @@ class StoreNoteRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:5000'],
-            'pdf' => ['required', 'file', 'max:10240', 'mimetypes:application/pdf'],
+            'description' => ['nullable', 'string', 'max:2000'],
+
+            // PDF optional
+            'pdf' => ['nullable', 'file', 'mimes:pdf', 'max:51200'],
+
+            // Text optional
+            'text_content' => ['nullable', 'string', 'min:20'],
+            'txt_file' => ['nullable', 'file', 'mimes:txt', 'max:2048'], // 2MB
         ];
     }
 }

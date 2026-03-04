@@ -16,7 +16,11 @@ class UpdateNoteRequest extends FormRequest
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+<<<<<<< HEAD
             'pdf' => ['nullable', 'file', 'mimes:pdf', 'max:30720'],
+=======
+            'pdf' => ['nullable', 'file', 'mimes:pdf', 'max:51200'],
+>>>>>>> 2f30f7bb1a249b844be9157f2da9601516d21379
         ];
     }
 }

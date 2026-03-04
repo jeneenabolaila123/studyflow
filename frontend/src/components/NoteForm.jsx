@@ -5,6 +5,11 @@ export default function NoteForm({ onCreated }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [pdf, setPdf] = useState(null);
+<<<<<<< HEAD
+=======
+  const [textContent, setTextContent] = useState('');
+  const [txtFile, setTxtFile] = useState(null);
+>>>>>>> 2f30f7bb1a249b844be9157f2da9601516d21379
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -13,6 +18,16 @@ export default function NoteForm({ onCreated }) {
     e.preventDefault();
     setError('');
     setFieldErrors({});
+<<<<<<< HEAD
+=======
+
+    const hasText = Boolean(textContent && textContent.trim().length);
+    if (!pdf && !txtFile && !hasText) {
+      setError('Please upload a PDF or add text (paste or .txt).');
+      return;
+    }
+
+>>>>>>> 2f30f7bb1a249b844be9157f2da9601516d21379
     setSubmitting(true);
 
     try {
@@ -20,6 +35,11 @@ export default function NoteForm({ onCreated }) {
       formData.append('title', title);
       if (description) formData.append('description', description);
       if (pdf) formData.append('pdf', pdf);
+<<<<<<< HEAD
+=======
+      if (hasText) formData.append('text_content', textContent.trim());
+      if (txtFile) formData.append('txt_file', txtFile);
+>>>>>>> 2f30f7bb1a249b844be9157f2da9601516d21379
 
       await axiosClient.post('/notes', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -28,6 +48,11 @@ export default function NoteForm({ onCreated }) {
       setTitle('');
       setDescription('');
       setPdf(null);
+<<<<<<< HEAD
+=======
+      setTextContent('');
+      setTxtFile(null);
+>>>>>>> 2f30f7bb1a249b844be9157f2da9601516d21379
       onCreated?.();
     } catch (err) {
       const status = err?.response?.status;
@@ -92,10 +117,56 @@ export default function NoteForm({ onCreated }) {
         ) : null}
       </div>
 
+<<<<<<< HEAD
       {error ? <div className="errorBox">{error}</div> : null}
 
       <button className="button" type="submit" disabled={submitting}>
         {submitting ? 'Uploading...' : 'Upload Note PDF'}
+=======
+      <div style={{ margin: '10px 0' }}>
+        <div className="label" style={{ fontWeight: 600 }}>
+          Add Note (Optional)
+        </div>
+        <div className="muted" style={{ marginTop: 4 }}>
+          You can paste/write text and/or upload a .txt file. This is optional.
+        </div>
+      </div>
+
+      <div className="field">
+        <div className="label">Text (optional)</div>
+        <textarea
+          className="textarea"
+          value={textContent}
+          onChange={(e) => setTextContent(e.target.value)}
+          placeholder="Write or paste your note text here..."
+        />
+        {fieldErrors.text_content?.length ? (
+          <div className="muted" style={{ color: '#991b1b' }}>
+            {fieldErrors.text_content[0]}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="field">
+        <div className="label">TXT file (optional)</div>
+        <input
+          className="input"
+          type="file"
+          accept=".txt,text/plain"
+          onChange={(e) => setTxtFile(e.target.files?.[0] || null)}
+        />
+        {fieldErrors.txt_file?.length ? (
+          <div className="muted" style={{ color: '#991b1b' }}>
+            {fieldErrors.txt_file[0]}
+          </div>
+        ) : null}
+      </div>
+
+      {error ? <div className="errorBox">{error}</div> : null}
+
+      <button className="button" type="submit" disabled={submitting}>
+        {submitting ? 'Uploading...' : 'Create Note'}
+>>>>>>> 2f30f7bb1a249b844be9157f2da9601516d21379
       </button>
     </form>
   );

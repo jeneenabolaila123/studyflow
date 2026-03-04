@@ -29,6 +29,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/notes/{id}', [NoteController::class, 'destroy']);
     Route::get('/notes/{id}/download', [NoteController::class, 'download']);
 });
+<<<<<<< HEAD
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ai/summarize', [\App\Http\Controllers\Api\AiController::class, 'summarize']);
+=======
+
+Route::middleware(['auth:sanctum', 'throttle:ai'])->prefix('ai')->group(function () {
+    Route::post('/summarize', [\App\Http\Controllers\Api\AiController::class, 'summarize']);
+    Route::post('/quiz', [\App\Http\Controllers\Api\AiController::class, 'quiz']);
+    Route::post('/chat', [\App\Http\Controllers\Api\AiController::class, 'chat']);
+>>>>>>> 2f30f7bb1a249b844be9157f2da9601516d21379
 });

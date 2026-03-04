@@ -11,6 +11,7 @@ use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -93,6 +94,17 @@ return Application::configure(basePath: dirname(__DIR__))
                 'success' => false,
                 'message' => 'Method not allowed.',
             ], 405);
+        });
+
+        $exceptions->render(function (TooManyRequestsHttpException $e, Request $request) {
+            if (! ($request->is('api/*') || $request->expectsJson())) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many requests.',
+            ], 429);
         });
 
         $exceptions->render(function (\Throwable $e, Request $request) {

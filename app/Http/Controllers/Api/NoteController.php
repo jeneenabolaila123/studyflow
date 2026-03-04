@@ -35,23 +35,69 @@ class NoteController extends Controller
     public function store(StoreNoteRequest $request)
     {
         $data = $request->validated();
-        $file = $request->file('pdf');
 
-        $storedPath = $file->store('notes', 'private');
+        $pdfFile = $request->file('pdf');
+        $txtFile = $request->file('txt_file');
+        $textContent = $data['text_content'] ?? null;
+
+        if (!$pdfFile && !$txtFile && !$textContent) {
+            return ApiResponse::error('Provide either a PDF, a TXT file, or text content.', 422);
+        }
+
+        $storedPath = null;
+        $originalFilename = null;
+        $mimeType = null;
+        $fileSize = null;
+
+        // If a PDF is uploaded, it stays the "primary" stored file.
+        if ($pdfFile) {
+            $storedPath = $pdfFile->store('notes', 'private');
+            $originalFilename = $pdfFile->getClientOriginalName();
+            $mimeType = $pdfFile->getMimeType() ?: 'application/pdf';
+            $fileSize = $pdfFile->getSize();
+        }
+
+        // If a TXT file is uploaded, read its contents into text_content.
+        // We do NOT overwrite the stored PDF path/metadata if a PDF is also uploaded.
+        if ($txtFile) {
+            $fileText = file_get_contents($txtFile->getRealPath());
+            if (is_string($fileText) && $fileText !== '') {
+                $textContent = $fileText;
+            }
+
+            // If there's no PDF, we may store the txt file as the primary stored file.
+            if (!$pdfFile) {
+                $storedPath = $txtFile->store('notes_txt', 'private');
+                $originalFilename = $txtFile->getClientOriginalName();
+                $mimeType = $txtFile->getMimeType() ?: 'text/plain';
+                $fileSize = $txtFile->getSize();
+            }
+        }
+
+        $sourceType = $pdfFile ? 'pdf' : 'text';
 
         try {
             $note = Note::create([
                 'user_id' => $request->user()->id,
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
-                'original_filename' => $file->getClientOriginalName(),
+
+                // file info (nullable if copy/paste text)
+                'original_filename' => $originalFilename,
                 'stored_path' => $storedPath,
-                'mime_type' => $file->getMimeType() ?: 'application/pdf',
-                'file_size' => $file->getSize(),
+                'mime_type' => $mimeType,
+                'file_size' => $fileSize,
+
+                // text support
+                'source_type' => $sourceType,
+                'text_content' => $textContent,
+
                 'status' => 'uploaded',
             ]);
         } catch (\Throwable $e) {
-            Storage::disk('private')->delete($storedPath);
+            if ($storedPath) {
+                Storage::disk('private')->delete($storedPath);
+            }
             throw $e;
         }
 
@@ -71,14 +117,19 @@ class NoteController extends Controller
         $note = $this->userNoteOrFail($request, $id);
         $this->authorize('download', $note);
 
+        // إذا note بدون ملف (copy/paste text) ما في download
+        if (!$note->stored_path) {
+            return ApiResponse::error('No file available for download for this note.', 422);
+        }
+
         $disk = Storage::disk('private');
 
-        if (! $disk->exists($note->stored_path)) {
+        if (!$disk->exists($note->stored_path)) {
             abort(404);
         }
 
         $stream = $disk->readStream($note->stored_path);
-        $downloadName = basename($note->original_filename);
+        $downloadName = $note->original_filename ? basename($note->original_filename) : 'note';
 
         return response()->streamDownload(function () use ($stream) {
             if (is_resource($stream)) {
@@ -86,8 +137,8 @@ class NoteController extends Controller
                 fclose($stream);
             }
         }, $downloadName, [
-            'Content-Type' => $note->mime_type,
-            'Content-Length' => (string) $note->file_size,
+            'Content-Type' => $note->mime_type ?? 'application/octet-stream',
+            'Content-Length' => (string) ($note->file_size ?? 0),
         ]);
     }
 
@@ -96,7 +147,10 @@ class NoteController extends Controller
         $note = $this->userNoteOrFail($request, $id);
         $this->authorize('delete', $note);
 
-        Storage::disk('private')->delete($note->stored_path);
+        if ($note->stored_path) {
+            Storage::disk('private')->delete($note->stored_path);
+        }
+
         $note->delete();
 
         return ApiResponse::success(null, 'Note deleted.');
