@@ -1,65 +1,73 @@
-import { useState } from 'react';
-import axiosClient from '../api/axiosClient';
+import { useState } from "react";
+import axiosClient from "../api/axiosClient";
 
 export default function NoteForm({ onCreated }) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [pdf, setPdf] = useState(null);
-  const [textContent, setTextContent] = useState('');
-  const [txtFile, setTxtFile] = useState(null);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [file, setFile] = useState(null);
+  const [textContent, setTextContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({});
+  const [error, setError] = useState("");
 
   const submit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setFieldErrors({});
 
-    const hasText = Boolean(textContent && textContent.trim().length);
-    if (!pdf && !txtFile && !hasText) {
-      setError('Please upload a PDF or add text (paste or .txt).');
+    e.preventDefault();
+
+    setError("");
+
+    if (!file && !textContent.trim()) {
+      setError("Please upload a file or write some text");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      const formData = new FormData();
-      formData.append('title', title);
-      if (description) formData.append('description', description);
-      if (pdf) formData.append('pdf', pdf);
-      if (hasText) formData.append('text_content', textContent.trim());
-      if (txtFile) formData.append('txt_file', txtFile);
 
-      await axiosClient.post('/notes', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const formData = new FormData();
+
+      formData.append("title", title);
+      formData.append("description", description);
+
+      if (file) {
+        formData.append("file", file);
+      }
+
+      if (textContent.trim()) {
+        formData.append("text_content", textContent.trim());
+      }
+
+      await axiosClient.post("/notes", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
       });
 
-      setTitle('');
-      setDescription('');
-      setPdf(null);
-      setTextContent('');
-      setTxtFile(null);
+      setTitle("");
+      setDescription("");
+      setFile(null);
+      setTextContent("");
+
       onCreated?.();
+
     } catch (err) {
-      const status = err?.response?.status;
-      if (status === 422) {
-        setFieldErrors(err.response?.data?.errors || {});
-      } else if (status === 403) {
-        setError('Forbidden.');
-      } else if (status === 401) {
-        setError('Unauthenticated.');
-      } else {
-        setError(err?.response?.data?.message || 'Upload failed.');
-      }
+
+      console.error(err);
+      setError("Upload failed");
+
     } finally {
+
       setSubmitting(false);
+
     }
+
   };
 
   return (
+
     <form className="card" onSubmit={submit}>
+
       <div className="field">
         <div className="label">Title</div>
         <input
@@ -68,11 +76,6 @@ export default function NoteForm({ onCreated }) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Chapter 1 notes"
         />
-        {fieldErrors.title?.length ? (
-          <div className="muted" style={{ color: '#991b1b' }}>
-            {fieldErrors.title[0]}
-          </div>
-        ) : null}
       </div>
 
       <div className="field">
@@ -83,35 +86,16 @@ export default function NoteForm({ onCreated }) {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Short description..."
         />
-        {fieldErrors.description?.length ? (
-          <div className="muted" style={{ color: '#991b1b' }}>
-            {fieldErrors.description[0]}
-          </div>
-        ) : null}
       </div>
 
       <div className="field">
-        <div className="label">PDF</div>
+        <div className="label">File</div>
         <input
           className="input"
           type="file"
-          accept="application/pdf"
-          onChange={(e) => setPdf(e.target.files?.[0] || null)}
+          accept=".pdf,.txt,.ppt,.pptx"
+          onChange={(e) => setFile(e.target.files[0])}
         />
-        {fieldErrors.pdf?.length ? (
-          <div className="muted" style={{ color: '#991b1b' }}>
-            {fieldErrors.pdf[0]}
-          </div>
-        ) : null}
-      </div>
-
-      <div style={{ margin: '10px 0' }}>
-        <div className="label" style={{ fontWeight: 600 }}>
-          Add Note (Optional)
-        </div>
-        <div className="muted" style={{ marginTop: 4 }}>
-          You can paste/write text and/or upload a .txt file. This is optional.
-        </div>
       </div>
 
       <div className="field">
@@ -120,35 +104,17 @@ export default function NoteForm({ onCreated }) {
           className="textarea"
           value={textContent}
           onChange={(e) => setTextContent(e.target.value)}
-          placeholder="Write or paste your note text here..."
+          placeholder="Write your note text..."
         />
-        {fieldErrors.text_content?.length ? (
-          <div className="muted" style={{ color: '#991b1b' }}>
-            {fieldErrors.text_content[0]}
-          </div>
-        ) : null}
       </div>
 
-      <div className="field">
-        <div className="label">TXT file (optional)</div>
-        <input
-          className="input"
-          type="file"
-          accept=".txt,text/plain"
-          onChange={(e) => setTxtFile(e.target.files?.[0] || null)}
-        />
-        {fieldErrors.txt_file?.length ? (
-          <div className="muted" style={{ color: '#991b1b' }}>
-            {fieldErrors.txt_file[0]}
-          </div>
-        ) : null}
-      </div>
-
-      {error ? <div className="errorBox">{error}</div> : null}
+      {error && <div className="errorBox">{error}</div>}
 
       <button className="button" type="submit" disabled={submitting}>
-        {submitting ? 'Uploading...' : 'Create Note'}
+        {submitting ? "Uploading..." : "Upload"}
       </button>
+
     </form>
+
   );
 }

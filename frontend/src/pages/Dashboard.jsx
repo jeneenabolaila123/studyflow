@@ -11,7 +11,6 @@ export default function Dashboard() {
 
   const token = localStorage.getItem("token");
 
-  // fetch notes
   const fetchNotes = async () => {
     try {
       const res = await axios.get("http://127.0.0.1:8000/api/notes", {
@@ -27,13 +26,9 @@ export default function Dashboard() {
     }
   };
 
- useEffect(() => {
-  const loadNotes = async () => {
-    await fetchNotes();
-  };
-
-  loadNotes();
-}, []);
+  useEffect(() => {
+    fetchNotes();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -68,7 +63,7 @@ export default function Dashboard() {
       setText("");
       setPdfFile(null);
 
-      fetchNotes(); // refresh notes
+      fetchNotes();
 
     } catch (error) {
 
@@ -79,70 +74,84 @@ export default function Dashboard() {
   };
 
   return (
-    <div>
+    <div style={{display:"flex", gap:"40px"}}>
 
-      <h1>Dashboard</h1>
+      {/* LEFT SIDE */}
+      <div style={{flex:1}}>
 
-      <h2>Upload Note</h2>
+        <h1>Dashboard</h1>
 
-      <form onSubmit={handleSubmit}>
+        <h2>Your Notes</h2>
 
-        <input
-          type="text"
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        {notes.length === 0 && <p>No notes yet.</p>}
 
-        <br /><br />
+        {notes.map((note) => (
+          <div key={note.id} style={{border:"1px solid gray", padding:"10px", margin:"10px"}}>
 
-        <textarea
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+            <h3>{note.title}</h3>
 
-        <br /><br />
+            <p>{note.description}</p>
 
-        <input
-          type="file"
-          accept="application/pdf"
-          onChange={(e) => setPdfFile(e.target.files[0])}
-        />
+            <p>Status: {note.status}</p>
 
-        <br /><br />
+            <p>Type: {note.source_type}</p>
+
+          </div>
+        ))}
+
+        <hr />
+
+        <h2>Add Note (Optional)</h2>
 
         <textarea
-          placeholder="Text (optional)"
+          placeholder="Write or paste your note text..."
           value={text}
           onChange={(e) => setText(e.target.value)}
+          style={{width:"100%", height:"100px"}}
         />
 
-        <br /><br />
+      </div>
 
-        <button type="submit">
-          Create Note
-        </button>
 
-      </form>
+      {/* RIGHT SIDE */}
+      <div style={{flex:1}}>
 
-      <hr />
+        <h2>Upload a PDF</h2>
 
-      <h2>Your Notes</h2>
+        <form onSubmit={handleSubmit}>
 
-      {notes.map((note) => (
-        <div key={note.id} style={{border:"1px solid gray", padding:"10px", margin:"10px"}}>
+          <input
+            type="text"
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
 
-          <h3>{note.title}</h3>
+          <br /><br />
 
-          <p>{note.description}</p>
+          <textarea
+            placeholder="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
 
-          <p>Status: {note.status}</p>
+          <br /><br />
 
-          <p>Type: {note.source_type}</p>
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => setPdfFile(e.target.files[0])}
+          />
 
-        </div>
-      ))}
+          <br /><br />
+
+          <button type="submit">
+            Upload PDF
+          </button>
+
+        </form>
+
+      </div>
 
     </div>
   );
