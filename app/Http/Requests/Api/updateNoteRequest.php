@@ -14,13 +14,56 @@ class UpdateNoteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['sometimes', 'required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-<<<<<<< HEAD
-            'pdf' => ['nullable', 'file', 'mimes:pdf', 'max:30720'],
-=======
-            'pdf' => ['nullable', 'file', 'mimes:pdf', 'max:51200'],
->>>>>>> 2f30f7bb1a249b844be9157f2da9601516d21379
+
+            'title' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'description' => [
+                'nullable',
+                'string'
+            ],
+
+            'pdf' => [
+                'nullable',
+                'file',
+                'mimes:pdf',
+                'max:51200'
+            ],
+
+            'text_content' => [
+                'nullable',
+                'string'
+            ],
+
+            'txt_file' => [
+                'nullable',
+                'file',
+                'mimes:txt,text/plain',
+                'max:10240'
+            ],
+
         ];
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+
+            $hasPdf = $this->hasFile('pdf');
+            $hasTxt = $this->hasFile('txt_file');
+            $hasText = trim((string)$this->input('text_content')) !== '';
+
+            if (!$hasPdf && !$hasTxt && !$hasText) {
+                $validator->errors()->add(
+                    'content',
+                    'You must upload a PDF, paste text, or upload a TXT file.'
+                );
+            }
+
+        });
     }
 }

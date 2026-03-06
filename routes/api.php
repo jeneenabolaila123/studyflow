@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Api\NoteController;
+use App\Http\Controllers\Api\AiController;
 
 Route::get('/ping', function () {
     return response()->json([
@@ -12,31 +13,47 @@ Route::get('/ping', function () {
 });
 
 Route::prefix('auth')->group(function () {
+
     Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:login');
 
     Route::middleware('auth:sanctum')->group(function () {
+
         Route::post('/logout', [AuthController::class, 'logout']);
+
         Route::get('/me', [AuthController::class, 'me']);
+
     });
 });
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/notes', [NoteController::class, 'index']);
-    Route::post('/notes', [NoteController::class, 'store']);
-    Route::get('/notes/{id}', [NoteController::class, 'show']);
-    Route::put('/notes/{id}', [NoteController::class, 'update']); // ✅ update (واحد فقط)
-    Route::delete('/notes/{id}', [NoteController::class, 'destroy']);
-    Route::get('/notes/{id}/download', [NoteController::class, 'download']);
-});
-<<<<<<< HEAD
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/ai/summarize', [\App\Http\Controllers\Api\AiController::class, 'summarize']);
-=======
 
-Route::middleware(['auth:sanctum', 'throttle:ai'])->prefix('ai')->group(function () {
-    Route::post('/summarize', [\App\Http\Controllers\Api\AiController::class, 'summarize']);
-    Route::post('/quiz', [\App\Http\Controllers\Api\AiController::class, 'quiz']);
-    Route::post('/chat', [\App\Http\Controllers\Api\AiController::class, 'chat']);
->>>>>>> 2f30f7bb1a249b844be9157f2da9601516d21379
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/notes', [NoteController::class, 'index']);
+
+    Route::post('/notes', [NoteController::class, 'store']);
+
+    Route::get('/notes/{id}', [NoteController::class, 'show']);
+
+    Route::put('/notes/{id}', [NoteController::class, 'update']);
+
+    Route::delete('/notes/{id}', [NoteController::class, 'destroy']);
+
+    Route::get('/notes/{id}/download', [NoteController::class, 'download']);
+
+});
+
+
+Route::middleware(['auth:sanctum', 'throttle:ai'])
+    ->prefix('ai')
+    ->group(function () {
+
+        Route::post('/summarize', [AiController::class, 'summarize']);
+
+        Route::post('/quiz', [AiController::class, 'quiz']);
+
+        Route::post('/chat', [AiController::class, 'chat']);
+
 });
