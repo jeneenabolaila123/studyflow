@@ -23,34 +23,46 @@ class NoteController extends Controller
 
     // POST /api/notes  (Upload PDF)
     public function store(Request $request)
-    {
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:2000'],
-            // ✅ change max as you want (KB). 51200 = 50MB, 102400 = 100MB
-            'pdf' => ['required', 'file', 'mimes:pdf', 'max:51200'],
-        ]);
+{
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'file' => 'nullable|file|mimes:pdf,txt,ppt,pptx',
+        'text_content' => 'nullable|string'
+    ]);
 
-        $file = $request->file('pdf');
+    $originalFilename = null;
+    $storedPath = null;
+    $mimeType = null;
+    $fileSize = null;
 
-        $path = $file->store('notes_pdfs', 'public');
+    if ($request->hasFile('file')) {
+        $file = $request->file('file');
 
-        $note = Note::create([
-            'user_id' => $request->user()->id,
-            'title' => $data['title'],
-            'description' => $data['description'] ?? null,
-            'pdf_path' => $path,
-            'mime_type' => $file->getClientMimeType(),
-            'file_size' => $file->getSize(),
-            'status' => 'uploaded',
-        ]);
-
-        return response()->json([
-            'message' => 'PDF uploaded successfully.',
-            'data' => $note,
-        ], 201);
+        $originalFilename = $file->getClientOriginalName();
+        $storedPath = $file->store('notes', 'public');
+        $mimeType = $file->getMimeType();
+        $fileSize = $file->getSize();
     }
 
+    $note = \App\Models\Note::create([
+        'user_id' => $request->user()->id,
+        'title' => $request->title,
+        'description' => $request->description,
+        'original_filename' => $originalFilename,
+        'stored_path' => $storedPath,
+        'mime_type' => $mimeType,
+        'file_size' => $fileSize,
+        'text_content' => $request->text_content,
+        'source_type' => $request->hasFile('file') ? 'file' : 'text',
+        'status' => 'uploaded'
+    ]);
+
+    return response()->json([
+        'message' => 'Note created successfully',
+        'note' => $note
+    ]);
+}
     // GET /api/notes/{id}
     public function show(Request $request, $id)
     {

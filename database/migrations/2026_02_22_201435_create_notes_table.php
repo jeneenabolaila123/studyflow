@@ -13,11 +13,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('notes', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('title');
-            $table->longText('content'); // pasted or extracted text
-            $table->timestamps();
+           $table->id();
+$table->foreignId('user_id')->constrained()->cascadeOnDelete();
+
+$table->string('title');
+$table->text('description')->nullable();
+
+$table->string('original_filename')->nullable();
+$table->string('stored_path')->nullable();
+$table->string('mime_type')->nullable();
+$table->integer('file_size')->nullable();
+
+$table->longText('text_content')->nullable();
+$table->string('source_type')->nullable();
+
+$table->timestamps();
         });
     }
 
