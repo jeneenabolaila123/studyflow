@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\StoreNoteRequest;
 use App\Http\Resources\NoteResource;
 use App\Models\Note;
 use App\Support\ApiResponse;
@@ -31,73 +32,42 @@ class NoteController extends Controller
         );
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
+   public function store(StoreNoteRequest $request)
+{
+    $file = $request->file('file');
+    $textContent = $request->input('text_content');
 
-            'file' => 'nullable|file|mimes:pdf,txt,ppt,pptx|max:51200',
+    $storedPath = null;
+    $originalFilename = null;
+    $mimeType = null;
+    $fileSize = null;
 
-            'text_content' => 'nullable|string'
-        ]);
-
-        $file = $request->file('file');
-        $textContent = $request->input('text_content');
-
-        if (!$file && !$textContent) {
-            return ApiResponse::error(
-                'Upload a file or write some text.',
-                422
-            );
-        }
-
-        $storedPath = null;
-        $originalFilename = null;
-        $mimeType = null;
-        $fileSize = null;
-
-        if ($file) {
-
-            $storedPath = $file->store('notes', 'private');
-
-            $originalFilename = $file->getClientOriginalName();
-
-            $mimeType = $file->getMimeType();
-
-            $fileSize = $file->getSize();
-        }
-
-        $note = Note::create([
-
-            'user_id' => $request->user()->id,
-
-            'title' => $request->title,
-
-            'description' => $request->description,
-
-            'original_filename' => $originalFilename,
-
-            'stored_path' => $storedPath,
-
-            'mime_type' => $mimeType,
-
-            'file_size' => $fileSize,
-
-            'source_type' => $file ? 'file' : 'text',
-
-            'text_content' => $textContent,
-
-            'status' => 'uploaded',
-
-        ]);
-
-        return ApiResponse::success(
-            (new NoteResource($note))->resolve($request),
-            'Note created.',
-            201
-        );
+    if ($file) {
+        $storedPath = $file->store('notes', 'private');
+        $originalFilename = $file->getClientOriginalName();
+        $mimeType = $file->getMimeType();
+        $fileSize = $file->getSize();
     }
+
+    $note = Note::create([
+        'user_id'           => $request->user()->id,
+        'title'             => $request->input('title'),
+        'description'       => $request->input('description'),
+        'original_filename' => $originalFilename,
+        'stored_path'       => $storedPath,
+        'mime_type'         => $mimeType,
+        'file_size'         => $fileSize,
+        'source_type'       => $file ? 'file' : 'text',
+        'text_content'      => $textContent,
+        'status'            => 'uploaded',
+    ]);
+
+    return ApiResponse::success(
+        (new NoteResource($note))->resolve($request),
+        'Note created.',
+        201
+    );
+}
 
     public function show(Request $request, int $id)
     {

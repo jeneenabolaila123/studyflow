@@ -7,6 +7,7 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import NotesPage from "./pages/NotesPage.jsx";
 import NoteDetailsPage from "./pages/NoteDetailsPage.jsx";
+import AiToolsPage from "./pages/AiToolsPage.jsx";
 
 import { useAuth } from "./auth/AuthContext.jsx";
 
@@ -33,6 +34,7 @@ function App() {
                     <Route path="/dashboard" element={<DashboardPage />} />
                     <Route path="/notes" element={<NotesPage />} />
                     <Route path="/notes/:id" element={<NoteDetailsPage />} />
+                    <Route path="/ai-tools" element={<AiToolsPage />} />
                 </Route>
             </Route>
 

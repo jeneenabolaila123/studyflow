@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { PageSpinner } from "../components/Spinner.jsx";
-import NoteForm from "../components/NoteForm.jsx";
 
 // ---- Icons -------------------------------------------------------
 function NotesIcon() {
@@ -179,30 +178,118 @@ function RecentNoteRow({ note }) {
     );
 }
 
+// ─── Cloud Upload Icon ─────────────────────────────────────────────
+function CloudUploadIcon() {
+    return (
+        <svg
+            width="48"
+            height="48"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            style={{ color: "var(--color-accent)" }}
+        >
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 16v-8m0 0L9 11m3-3l3 3M6.5 19a4.5 4.5 0 01-1.41-8.775A5.5 5.5 0 0116.5 7H17a4 4 0 013.5 5.917A3.5 3.5 0 0117 19H6.5z"
+            />
+        </svg>
+    );
+}
+
+function CheckCircleIcon() {
+    return (
+        <svg
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+        >
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+        </svg>
+    );
+}
+
+function BrainIcon() {
+    return (
+        <svg
+            width="18"
+            height="18"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+        >
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+            />
+        </svg>
+    );
+}
+
+function SummaryActivityIcon() {
+    return (
+        <svg
+            width="14"
+            height="14"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+        >
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+        </svg>
+    );
+}
+
+// ─── Main component ────────────────────────────────────────────────
 export default function DashboardPage() {
     const { user } = useAuth();
 
+    // ── Notes list state ──
     const [notes, setNotes] = useState([]);
-    const [text, setText] = useState("");
-    const [txtFile, setTxtFile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    // ── Upload form state ──
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [file, setFile] = useState(null);
+    const [text_content, setTextContent] = useState("");
+    const [aiQuestion, setAiQuestion] = useState("");
+    const [isDragging, setIsDragging] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [uploadSuccess, setUploadSuccess] = useState(false);
+    const [uploadError, setUploadError] = useState("");
+
+    const fileInputRef = useRef(null);
+
+    // ── Load notes ──
     const load = useCallback(async () => {
         setLoading(true);
         setError("");
-
         try {
             const res = await axiosClient.get("/notes");
             setNotes(res.data?.data || []);
         } catch (err) {
-            const status = err?.response?.status;
-
-            if (status !== 401) {
+            if (err?.response?.status !== 401)
                 setError(
                     err?.response?.data?.message || "Failed to load notes."
                 );
-            }
         } finally {
             setLoading(false);
         }
@@ -212,26 +299,95 @@ export default function DashboardPage() {
         load();
     }, [load]);
 
+    // ── Drag & drop handlers ──
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+    const handleDragLeave = () => setIsDragging(false);
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const droppedFile = e.dataTransfer.files[0];
+        if (droppedFile) setFile(droppedFile);
+    };
+    const handleDropZoneClick = () => fileInputRef.current?.click();
+    const handleFileInput = (e) => {
+        if (e.target.files[0]) setFile(e.target.files[0]);
+    };
+
+    // ── Upload handler ──
+    const handleUpload = async (e) => {
+        e.preventDefault();
+        if (!title.trim()) {
+            setUploadError("Title is required.");
+            return;
+        }
+        if (!file && !text_content.trim()) {
+            setUploadError("Please drop a file or paste your notes.");
+            return;
+        }
+        setUploading(true);
+        setUploadError("");
+        try {
+            const formData = new FormData();
+            formData.append("title", title);
+            formData.append("description", description);
+            if (file) formData.append("file", file);
+            if (text_content) formData.append("text_content", text_content);
+            if (aiQuestion.trim()) formData.append("question", aiQuestion);
+            await axiosClient.post("/notes", formData);
+            setUploadSuccess(true);
+            setTitle("");
+            setDescription("");
+            setFile(null);
+            setTextContent("");
+            setAiQuestion("");
+            load();
+            setTimeout(() => setUploadSuccess(false), 3000);
+        } catch (err) {
+            setUploadError(
+                err?.response?.data?.message ||
+                    "Upload failed. Please try again."
+            );
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const totalNotes = notes.length;
     const aiSummaries = notes.filter((n) => n.ai_summary).length;
     const filesUploaded = notes.filter((n) => n.has_file).length;
-
+    const aiUsage = aiSummaries; // grows as more summaries are generated
+    const recentAiActivity = notes
+        .filter((n) => n.ai_summary)
+        .slice(0, 5)
+        .map((n) => ({
+            id: n.id,
+            action: "Generated summary",
+            title: n.title,
+            date: n.updated_at || n.created_at,
+        }));
     const firstName = user?.name?.split(" ")[0] || "there";
 
-    if (loading) {
-        return <PageSpinner />;
-    }
+    if (loading) return <PageSpinner />;
 
     return (
-        <div className="dashboard-page">
+        <div className="dashboard-page dash-fade-in">
+            {/* ── Page header ── */}
             <div className="page-header">
-                <h1>Good day, {firstName} 👋</h1>
-                <p>Your AI study dashboard.</p>
+                <h1>
+                    Good day, {firstName} <span className="wave">👋</span>
+                </h1>
+                <p className="page-header-sub">
+                    Upload study material or paste notes — your AI will handle
+                    the rest.
+                </p>
             </div>
 
             {error && <div className="alert alert-error">{error}</div>}
 
-            {/* Stats */}
+            {/* ── Stats ── */}
             <div className="stats-grid">
                 <StatCard
                     icon={<NotesIcon />}
@@ -239,82 +395,236 @@ export default function DashboardPage() {
                     value={totalNotes}
                     label="Total Notes"
                 />
-
                 <StatCard
                     icon={<SparklesIcon />}
                     iconClass="stat-icon-blue"
                     value={aiSummaries}
                     label="AI Summaries"
                 />
-
                 <StatCard
                     icon={<FilesIcon />}
                     iconClass="stat-icon-green"
                     value={filesUploaded}
                     label="Files Uploaded"
                 />
+                <StatCard
+                    icon={<BrainIcon />}
+                    iconClass="stat-icon-orange"
+                    value={aiUsage}
+                    label="AI Usage"
+                />
             </div>
 
-            <div className="dashboard-body">
-                {/* Recent Notes + Add Note inline */}
-                <div className="section-card">
-                    <div className="section-card-title">Recent Notes</div>
+            {/* ── Upload card ── */}
+            <div className="upload-card">
+                <h2 className="upload-card-heading">Add Study Material</h2>
 
-                    {notes.length === 0 ? (
-                        <div className="empty-state">
-                            <p>No notes yet.</p>
-
-                            <Link to="/notes" className="btn btn-primary">
-                                <PlusIcon /> Add first note
-                            </Link>
+                <form onSubmit={handleUpload} className="upload-form">
+                    {/* Title + Description row */}
+                    <div className="upload-meta-row">
+                        <div className="upload-field">
+                            <label className="upload-label">
+                                Title <span className="required">*</span>
+                            </label>
+                            <input
+                                className="upload-input"
+                                placeholder="e.g. Chapter 3 — Thermodynamics"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                            />
                         </div>
-                    ) : (
-                        <>
-                            {notes.slice(0, 8).map((note) => (
-                                <RecentNoteRow key={note.id} note={note} />
-                            ))}
-                        </>
+                        <div className="upload-field">
+                            <label className="upload-label">
+                                Description{" "}
+                                <span className="optional">(optional)</span>
+                            </label>
+                            <input
+                                className="upload-input"
+                                placeholder="Brief description…"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Drop zone */}
+                    <div
+                        className={`drop-zone${
+                            isDragging ? " drop-zone--active" : ""
+                        }${file ? " drop-zone--has-file" : ""}`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={handleDropZoneClick}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) =>
+                            e.key === "Enter" && handleDropZoneClick()
+                        }
+                    >
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".pdf,.txt,.ppt,.pptx"
+                            style={{ display: "none" }}
+                            onChange={handleFileInput}
+                        />
+
+                        {file ? (
+                            <div className="drop-zone-file">
+                                <FilesIcon />
+                                <span className="drop-zone-filename">
+                                    {file.name}
+                                </span>
+                                <button
+                                    type="button"
+                                    className="drop-zone-remove"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFile(null);
+                                    }}
+                                >
+                                    ✕ Remove
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <CloudUploadIcon />
+                                <p className="drop-zone-title">
+                                    Upload your study material
+                                </p>
+                                <p className="drop-zone-sub">
+                                    Drag &amp; drop files here or browse
+                                </p>
+                                <span className="drop-zone-btn">
+                                    Browse files
+                                </span>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Divider */}
+                    <div className="upload-divider">
+                        <span>or paste your notes</span>
+                    </div>
+
+                    {/* Text content */}
+                    <textarea
+                        className="upload-textarea"
+                        placeholder="Paste or write your study notes here…"
+                        value={text_content}
+                        onChange={(e) => setTextContent(e.target.value)}
+                        rows={5}
+                    />
+
+                    {/* Optional AI question */}
+                    <div className="upload-field">
+                        <label className="upload-label">
+                            Ask a question about your notes{" "}
+                            <span className="optional">(optional)</span>
+                        </label>
+                        <input
+                            className="upload-input"
+                            placeholder="Example: What are the key concepts in this lecture?"
+                            value={aiQuestion}
+                            onChange={(e) => setAiQuestion(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Feedback */}
+                    {uploadError && (
+                        <div className="alert alert-error">{uploadError}</div>
+                    )}
+                    {uploadSuccess && (
+                        <div className="alert alert-success">
+                            <CheckCircleIcon /> Note uploaded successfully!
+                        </div>
                     )}
 
-                    <hr />
+                    {/* Submit */}
+                    <button
+                        type="submit"
+                        className="btn btn-primary upload-submit"
+                        disabled={uploading}
+                    >
+                        {uploading ? (
+                            <span className="upload-spinner" />
+                        ) : (
+                            <SparklesIcon />
+                        )}
+                        {uploading ? "Uploading…" : "Upload Note"}
+                    </button>
+                </form>
+            </div>
 
-                    <div className="section-card-title">Add Note</div>
+            {/* ── Recent AI Activity ── */}
+            {recentAiActivity.length > 0 && (
+                <div className="section-card ai-activity-card">
+                    <div className="section-card-header">
+                        <div className="section-card-title">
+                            Recent AI Activity
+                        </div>
+                        <Link to="/ai-tools" className="btn btn-sm btn-ghost">
+                            AI Tools <ArrowRightIcon />
+                        </Link>
+                    </div>
+                    <div className="ai-activity-list">
+                        {recentAiActivity.map((item, i) => (
+                            <div
+                                key={item.id}
+                                className="ai-activity-row"
+                                style={{ animationDelay: `${i * 60}ms` }}
+                            >
+                                <div className="ai-activity-icon">
+                                    <SummaryActivityIcon />
+                                </div>
+                                <div className="ai-activity-body">
+                                    <span className="ai-activity-action">
+                                        {item.action}
+                                    </span>{" "}
+                                    <span className="ai-activity-note">
+                                        for &ldquo;{item.title}&rdquo;
+                                    </span>
+                                </div>
+                                <div className="ai-activity-time">
+                                    {item.date
+                                        ? new Date(
+                                              item.date
+                                          ).toLocaleDateString("en-US", {
+                                              month: "short",
+                                              day: "numeric",
+                                          })
+                                        : ""}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
-                    <textarea
-                        placeholder="Write or paste your note text..."
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                    />
-
-                    <br />
-
-                    <label>TXT file</label>
-
-                    <input
-                        type="file"
-                        accept=".txt"
-                        onChange={(e) => setTxtFile(e.target.files[0])}
-                    />
+            {/* ── Recent notes ── */}
+            <div className="section-card">
+                <div className="section-card-header">
+                    <div className="section-card-title">Recent Notes</div>
+                    <Link to="/notes" className="btn btn-sm btn-ghost">
+                        View all <ArrowRightIcon />
+                    </Link>
                 </div>
 
-                {/* Upload + Quick Actions */}
-                <div className="section-card">
-                    <div className="section-card-title">Upload</div>
-
-                    <NoteForm onCreated={load} />
-
-                    <hr />
-
-                    <div className="section-card-title">Quick Actions</div>
-
-                    <Link to="/notes" className="btn btn-primary">
-                        <PlusIcon /> New Note
-                    </Link>
-
-                    <Link to="/notes" className="btn btn-secondary">
-                        <NotesIcon /> All Notes
-                    </Link>
-                </div>
+                {notes.length === 0 ? (
+                    <div className="empty-state">
+                        <p>
+                            No notes yet. Upload your first study material
+                            above.
+                        </p>
+                    </div>
+                ) : (
+                    notes
+                        .slice(0, 8)
+                        .map((note) => (
+                            <RecentNoteRow key={note.id} note={note} />
+                        ))
+                )}
             </div>
         </div>
     );

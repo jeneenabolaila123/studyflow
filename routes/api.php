@@ -5,13 +5,17 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Api\NoteController;
 use App\Http\Controllers\Api\AiController;
 
+/* ADD THIS BLOCK HERE */
+Route::options('/{any}', function () {
+    return response()->json([], 200);
+})->where('any', '.*');
+
 Route::get('/ping', function () {
     return response()->json([
         'ok' => true,
         'message' => 'API is working',
     ], 200);
 });
-
 Route::prefix('auth')->group(function () {
 
     Route::post('/register', [AuthController::class, 'register']);

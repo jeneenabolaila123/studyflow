@@ -2,7 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import ChatMessage, { TypingIndicator } from "../components/ChatMessage.jsx";
-import Spinner, { PageSpinner } from "../components/Spinner.jsx";
+import { PageSpinner } from "../components/Spinner.jsx";
+
+function AiThinking({ label = "AI is thinking" }) {
+    return (
+        <span className="ai-thinking">
+            <span className="ai-thinking-icon">✦</span>
+            {label}
+            <span className="ai-thinking-dots">
+                <span />
+                <span />
+                <span />
+            </span>
+        </span>
+    );
+}
 
 export default function NoteDetailsPage() {
     const { id } = useParams();
@@ -152,12 +166,14 @@ export default function NoteDetailsPage() {
 
         try {
             const res = await axiosClient.post("/ai/quiz", {
-                note_id: Number(id),
+                note_id: parseInt(id),
                 count: 5,
             });
 
             setQuizQuestions(res.data?.data?.questions || []);
         } catch (err) {
+            console.log("QUIZ ERROR:", err.response?.data);
+
             const status = err?.response?.status;
 
             if (status === 429)
@@ -172,7 +188,6 @@ export default function NoteDetailsPage() {
             setQuizLoading(false);
         }
     };
-
     const sendChat = async () => {
         const message = chatInput.trim();
         if (!message || chatLoading) return;
@@ -371,40 +386,33 @@ export default function NoteDetailsPage() {
                     AI Tools
                 </h2>
 
-                <div
-                    style={{
-                        display: "flex",
-                        gap: 10,
-                        flexWrap: "wrap",
-                        marginBottom: 16,
-                    }}
-                >
+                <div className="ai-action-btns">
                     <button
-                        className="btn btn-primary"
+                        className="ai-action-btn ai-action-btn--summary"
                         onClick={generateSummary}
-                        disabled={summaryLoading}
-                        style={{ minWidth: 160 }}
+                        disabled={summaryLoading || quizLoading}
                     >
                         {summaryLoading ? (
-                            <>
-                                <Spinner size="sm" /> Generating…
-                            </>
+                            <AiThinking label="Summarizing" />
                         ) : (
-                            "✦ Generate Summary"
+                            <>
+                                <span className="ai-action-btn-icon">📄</span>{" "}
+                                Generate Summary
+                            </>
                         )}
                     </button>
                     <button
-                        className="btn btn-secondary"
+                        className="ai-action-btn ai-action-btn--quiz"
                         onClick={generateQuiz}
-                        disabled={quizLoading}
-                        style={{ minWidth: 160 }}
+                        disabled={quizLoading || summaryLoading}
                     >
                         {quizLoading ? (
-                            <>
-                                <Spinner size="sm" /> Generating…
-                            </>
+                            <AiThinking label="Generating quiz" />
                         ) : (
-                            "✦ Generate Quiz"
+                            <>
+                                <span className="ai-action-btn-icon">🧠</span>{" "}
+                                Generate Quiz
+                            </>
                         )}
                     </button>
                 </div>

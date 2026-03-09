@@ -163,14 +163,14 @@ export default function Sidebar({ open, onClose }) {
                     </div>
 
                     <NavLink
-                        to="/notes"
-                        className="sidebar-link"
+                        to="/ai-tools"
+                        className={({ isActive }) =>
+                            `sidebar-link ${isActive ? "active" : ""}`
+                        }
                         onClick={onClose}
-                        title="AI tools are available inside each note"
                     >
                         <SparklesIcon />
-                        AI Studio
-                        <span className="sidebar-link-badge">Pro</span>
+                        AI Tools
                     </NavLink>
                 </nav>
 
