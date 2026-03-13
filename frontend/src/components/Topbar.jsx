@@ -23,6 +23,8 @@ function HamburgerIcon() {
 const pageTitles = {
     "/dashboard": "Dashboard",
     "/notes": "My Notes",
+    "/ai-tools": "AI Tools",
+    "/study-assistance": "Study Assistance by Country",
 };
 
 export default function Topbar({ onMenuToggle }) {

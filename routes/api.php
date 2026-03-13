@@ -60,4 +60,6 @@ Route::middleware(['auth:sanctum', 'throttle:ai'])
 
         Route::post('/chat', [AiController::class, 'chat']);
 
+        Route::post('/study-assistance', [AiController::class, 'studyAssistance']);
+
 });
