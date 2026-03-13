@@ -490,10 +490,67 @@ export default function NoteDetailsPage() {
                                         style={{
                                             fontSize: 14,
                                             lineHeight: 1.6,
+                                            marginBottom: q.options ? 8 : 0,
                                         }}
                                     >
                                         {q.question}
                                     </div>
+                                    {q.options && (
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: 4,
+                                                marginBottom: 8,
+                                            }}
+                                        >
+                                            {Object.entries(q.options).map(
+                                                ([label, text]) => (
+                                                    <div
+                                                        key={label}
+                                                        style={{
+                                                            fontSize: 13,
+                                                            padding: "4px 8px",
+                                                            borderRadius: 6,
+                                                            background:
+                                                                q.answer ===
+                                                                label
+                                                                    ? "rgba(34,197,94,0.12)"
+                                                                    : "transparent",
+                                                            border:
+                                                                q.answer ===
+                                                                label
+                                                                    ? "1px solid rgba(34,197,94,0.4)"
+                                                                    : "1px solid transparent",
+                                                            color:
+                                                                q.answer ===
+                                                                label
+                                                                    ? "#15803d"
+                                                                    : "var(--color-text)",
+                                                            fontWeight:
+                                                                q.answer ===
+                                                                label
+                                                                    ? 600
+                                                                    : 400,
+                                                        }}
+                                                    >
+                                                        <strong>{label}.</strong>{" "}
+                                                        {text}
+                                                        {q.answer === label && (
+                                                            <span
+                                                                style={{
+                                                                    marginLeft: 6,
+                                                                    fontSize: 11,
+                                                                }}
+                                                            >
+                                                                ✓ Correct
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
