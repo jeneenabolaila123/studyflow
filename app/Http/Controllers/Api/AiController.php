@@ -72,4 +72,46 @@ PROMPT;
             'quiz' => $aiResponse,
         ], 'OK');
     }
+
+    public function studyAssistance(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'country' => ['required', 'string', 'max:100'],
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::error('Validation error.', 422, $validator->errors()->toArray());
+        }
+
+        $country = trim($request->input('country'));
+
+        $prompt = <<<PROMPT
+You are a knowledgeable education advisor. A student wants to learn about study assistance programs available in {$country}.
+
+Please provide a well-structured overview that includes:
+1. **Government scholarships and grants** – national funding programs for students.
+2. **University financial aid** – bursaries, tuition waivers, or merit-based awards offered by universities in {$country}.
+3. **International scholarships** – programs open to students from or studying in {$country} (e.g. Erasmus, Fulbright, Commonwealth).
+4. **Student loans and support services** – government-backed loans or repayment assistance schemes.
+5. **Online learning resources** – free or subsidised platforms available in {$country}.
+
+Be concise, accurate, and helpful. If {$country} is not a recognised country, politely say so and suggest checking the correct spelling.
+PROMPT;
+
+        $response = Http::timeout(90)->post('http://localhost:11434/api/generate', [
+            'model'  => 'qwen2.5:3b',
+            'prompt' => $prompt,
+            'stream' => false,
+        ]);
+
+        if ($response->failed()) {
+            return ApiResponse::error('Failed to get a response from the AI model.', 502);
+        }
+
+        $aiResponse = $response->json('response') ?? $response->body();
+
+        return ApiResponse::success([
+            'result' => $aiResponse,
+        ], 'OK');
+    }
 }
