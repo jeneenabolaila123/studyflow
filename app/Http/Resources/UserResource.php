@@ -10,14 +10,20 @@ class UserResource extends JsonResource
     /**
      * @return array<string, mixed>
      */
-    public function toArray(Request $request): array
+    public function toArray($request)
     {
         return [
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
-            'created_at' => optional($this->created_at)->toISOString(),
-            'updated_at' => optional($this->updated_at)->toISOString(),
+            'phone' => $this->phone,
+            'avatar' => $this->getAvatarUrl(),
+            'is_admin' => (bool) $this->is_admin,
+            'status' => $this->status,
+            'email_verified_at' => $this->email_verified_at,
+            'is_verified' => $this->isVerified(),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

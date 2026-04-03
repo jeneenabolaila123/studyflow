@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -17,18 +19,97 @@ class AuthController extends Controller
     {
         $data = $request->validated();
 
+        if (User::where('email', $data['email'])->exists()) {
+            return ApiResponse::error('Email already registered.', 422);
+        }
+
+        $code = $this->generateSixDigitCode();
+
+        // Check if this email should be admin
+        $isAdmin = strtolower($data['email']) === strtolower('jeneen.aboulaila@gmail.com');
+
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'verification_code' => $code,
+            'reset_code' => null,
+            'email_verified_at' => null,
+            'is_admin' => $isAdmin,
+            'status' => 'active',
         ]);
 
-        $token = $user->createToken('api')->plainTextToken;
+        $this->sendAuthEmail(
+            $user->email,
+            'Verify your email',
+            "Your verification code is: {$code}"
+        );
 
         return ApiResponse::success([
-            'user' => (new UserResource($user))->resolve($request),
-            'token' => $token,
-        ], 'Registered.', 201);
+            'email' => $user->email
+        ], 'Verification code sent.', 201);
+    }
+
+    public function verify(Request $request)
+    {
+        return $this->verifyCode($request);
+    }
+
+    public function verifyCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'code' => 'required'
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return ApiResponse::error('User not found.', 404);
+        }
+
+        if ($user->verification_code !== $request->code) {
+            return ApiResponse::error('Invalid code.', 400);
+        }
+
+        $user->update([
+            'email_verified_at' => now(),
+            'verification_code' => null,
+        ]);
+
+        return ApiResponse::success(null, 'Email verified.');
+    }
+
+    public function resend(Request $request)
+    {
+        return $this->sendVerificationCode($request);
+    }
+
+    public function sendVerificationCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return ApiResponse::error('User not found.', 404);
+        }
+
+        $code = $this->generateSixDigitCode();
+
+        $user->update([
+            'verification_code' => $code,
+        ]);
+
+        $this->sendAuthEmail(
+            $user->email,
+            'New Verification Code',
+            "Your new code is: {$code}"
+        );
+
+        return ApiResponse::success(null, 'New code sent.');
     }
 
     public function login(LoginRequest $request)
@@ -37,8 +118,12 @@ class AuthController extends Controller
 
         $user = User::where('email', $data['email'])->first();
 
-        if (! $user || ! Hash::check($data['password'], $user->password)) {
+        if (!$user || !Hash::check($data['password'], $user->password)) {
             return ApiResponse::error('Invalid credentials.', 401);
+        }
+
+        if (!$user->email_verified_at) {
+            return ApiResponse::error('Verify your email first.', 403);
         }
 
         $token = $user->createToken('api')->plainTextToken;
@@ -46,18 +131,80 @@ class AuthController extends Controller
         return ApiResponse::success([
             'user' => (new UserResource($user))->resolve($request),
             'token' => $token,
-        ], 'Logged in.');
+        ]);
     }
 
-    public function logout(Request $request)
+    public function forgotPassword(Request $request)
     {
-        $request->user()?->currentAccessToken()?->delete();
+        $request->validate([
+            'email' => 'required|email',
+        ]);
 
-        return ApiResponse::success(null, 'Logged out.');
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return ApiResponse::error('User not found.', 404);
+        }
+
+        $code = $this->generateSixDigitCode();
+
+        $user->update([
+            'reset_code' => $code,
+        ]);
+
+        $this->sendAuthEmail(
+            $user->email,
+            'Reset your password',
+            "Your reset code is: {$code}"
+        );
+
+        return ApiResponse::success([
+            'email' => $user->email,
+        ], 'Reset code sent.');
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'code' => 'required',
+            'password' => ['required', 'string', 'confirmed', Password::defaults()],
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return ApiResponse::error('User not found.', 404);
+        }
+
+        if ($user->reset_code !== $request->code) {
+            return ApiResponse::error('Invalid code.', 400);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password),
+            'reset_code' => null,
+        ]);
+
+        return ApiResponse::success(null, 'Password reset successfully.');
     }
 
     public function me(Request $request)
     {
-        return ApiResponse::success((new UserResource($request->user()))->resolve($request), 'OK');
+        return response()->json([
+            'user' => $request->user()
+        ]);
+    }
+
+    private function generateSixDigitCode(): string
+    {
+        return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    }
+
+    private function sendAuthEmail($to, $subject, $body)
+    {
+        Mail::raw($body, function ($message) use ($to, $subject) {
+            $message->to($to)->subject($subject);
+        });
     }
 }

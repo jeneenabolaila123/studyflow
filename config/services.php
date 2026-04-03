@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'ollama' => [
+        'base_url' => env('OLLAMA_BASE_URL', 'http://localhost:11434'),
+        'model' => env('OLLAMA_MODEL', 'phi3:mini'),
+        'timeout' => env('OLLAMA_TIMEOUT', 600),
+        'connect_timeout' => env('OLLAMA_CONNECT_TIMEOUT', 10),
+        'min_chunk_tokens' => env('OLLAMA_MIN_CHUNK_TOKENS', 2000),
+        'max_chunk_tokens' => env('OLLAMA_MAX_CHUNK_TOKENS', 3000),
+        'chunk_chars_per_token' => env('OLLAMA_CHUNK_CHARS_PER_TOKEN', 4),
+    ],
+
 ];
