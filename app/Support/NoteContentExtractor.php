@@ -4,64 +4,100 @@ namespace App\Support;
 
 use App\Models\Note;
 use Illuminate\Support\Facades\Storage;
+use Smalot\PdfParser\Parser;
 
 class NoteContentExtractor
 {
     public function extract(Note $note): ?string
     {
-        // If user pasted text
-        $text = is_string($note->text_content) ? trim($note->text_content) : '';
-        if ($text !== '') {
-            return $text;
+
+        /*
+        1️⃣ If user pasted text
+        */
+        if (!empty($note->text_content)) {
+            return trim($note->text_content);
         }
 
-        if (! $note->stored_path) {
+
+        /*
+        2️⃣ If no file stored
+        */
+        if (!$note->stored_path) {
             return null;
         }
 
+
+        /*
+        3️⃣ Check file exists
+        */
         $disk = Storage::disk('private');
 
-        if (! $disk->exists($note->stored_path)) {
+        if (!$disk->exists($note->stored_path)) {
             return null;
         }
 
-        $mimeType = strtolower((string) ($note->mime_type ?? ''));
 
         /*
-        TXT files
+        4️⃣ Get file extension
         */
-        if (str_contains($mimeType, 'text/plain')) {
+        $extension = strtolower(pathinfo($note->stored_path, PATHINFO_EXTENSION));
+
+
+        /*
+        ========================
+        TXT FILE
+        ========================
+        */
+        if ($extension === 'txt') {
+
             try {
+
                 $content = $disk->get($note->stored_path);
+
                 return trim($content) !== '' ? trim($content) : null;
+
             } catch (\Throwable $e) {
+
                 return null;
+
             }
+
         }
+
+
 
         /*
-        PDF files
+        ========================
+        PDF FILE
+        ========================
         */
-        if (!str_contains($mimeType, 'pdf') && $note->source_type !== 'pdf') {
-            return null;
+        if ($extension === 'pdf') {
+
+            try {
+
+                $content = $disk->get($note->stored_path);
+
+                $parser = new Parser();
+
+                $pdf = $parser->parseContent($content);
+
+                $text = trim((string) $pdf->getText());
+
+                if ($text === '') {
+                    return null;
+                }
+
+                return $text;
+
+            } catch (\Throwable $e) {
+
+                return null;
+
+            }
+
         }
 
-        if (!class_exists(\Smalot\PdfParser\Parser::class)) {
-            return null;
-        }
 
-        try {
-            $content = $disk->get($note->stored_path);
-
-            $parser = new \Smalot\PdfParser\Parser();
-            $pdf = $parser->parseContent($content);
-
-            $pdfText = trim((string) $pdf->getText());
-
-            return $pdfText !== '' ? $pdfText : null;
-
-        } catch (\Throwable $e) {
-            return null;
-        }
+        return null;
     }
 }

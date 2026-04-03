@@ -415,6 +415,128 @@ export default function DashboardPage() {
                 />
             </div>
 
+            {/* ── Quiz Challenge Card ── */}
+            <div className="section-card" style={{ marginBottom: "24px" }}>
+                <div
+                    style={{
+                        background:
+                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                        borderRadius: "16px",
+                        padding: "24px",
+                        color: "white",
+                        position: "relative",
+                        overflow: "hidden",
+                    }}
+                >
+                    <div style={{ position: "relative", zIndex: 2 }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                marginBottom: "16px",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    fontSize: "2rem",
+                                    marginRight: "12px",
+                                    filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+                                }}
+                            >
+                                🧠
+                            </div>
+                            <div>
+                                <h3
+                                    style={{
+                                        margin: "0",
+                                        fontSize: "20px",
+                                        fontWeight: "bold",
+                                        textShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                                    }}
+                                >
+                                    Test Your Knowledge
+                                </h3>
+                                <p
+                                    style={{
+                                        margin: "0",
+                                        opacity: "0.9",
+                                        fontSize: "14px",
+                                    }}
+                                >
+                                    Challenge yourself with our interactive quiz
+                                </p>
+                            </div>
+                        </div>
+                        <p
+                            style={{
+                                margin: "0 0 20px 0",
+                                opacity: "0.95",
+                                lineHeight: "1.5",
+                            }}
+                        >
+                            Put your learning to the test! Choose from different
+                            difficulty levels and track your progress with our
+                            engaging quiz platform.
+                        </p>
+                        <Link
+                            to="/quiz"
+                            style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                background: "rgba(255,255,255,0.2)",
+                                color: "white",
+                                padding: "12px 20px",
+                                borderRadius: "10px",
+                                textDecoration: "none",
+                                fontWeight: "600",
+                                backdropFilter: "blur(10px)",
+                                border: "1px solid rgba(255,255,255,0.3)",
+                                transition: "all 0.2s ease",
+                                fontSize: "14px",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.target.style.background =
+                                    "rgba(255,255,255,0.3)";
+                                e.target.style.transform = "translateY(-1px)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.background =
+                                    "rgba(255,255,255,0.2)";
+                                e.target.style.transform = "translateY(0)";
+                            }}
+                        >
+                            <span style={{ marginRight: "8px" }}>🚀</span>
+                            Start Quiz Challenge
+                        </Link>
+                    </div>
+                    {/* Background decoration */}
+                    <div
+                        style={{
+                            position: "absolute",
+                            top: "-50px",
+                            right: "-50px",
+                            width: "120px",
+                            height: "120px",
+                            background: "rgba(255,255,255,0.1)",
+                            borderRadius: "50%",
+                            zIndex: 1,
+                        }}
+                    ></div>
+                    <div
+                        style={{
+                            position: "absolute",
+                            bottom: "-30px",
+                            left: "-30px",
+                            width: "80px",
+                            height: "80px",
+                            background: "rgba(255,255,255,0.08)",
+                            borderRadius: "50%",
+                            zIndex: 1,
+                        }}
+                    ></div>
+                </div>
+            </div>
+
             {/* ── Upload card ── */}
             <div className="upload-card">
                 <h2 className="upload-card-heading">Add Study Material</h2>

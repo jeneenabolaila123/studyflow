@@ -8,6 +8,7 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import NotesPage from "./pages/NotesPage.jsx";
 import NoteDetailsPage from "./pages/NoteDetailsPage.jsx";
 import AiToolsPage from "./pages/AiToolsPage.jsx";
+import QuizPage from "./pages/QuizPage.jsx";
 
 import { useAuth } from "./auth/AuthContext.jsx";
 
@@ -27,6 +28,12 @@ function App() {
             {/* Public auth pages — full-screen, no sidebar */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+
+            {/* Quiz page — full-screen, no sidebar for better focus */}
+            <Route element={<ProtectedRoute />}>
+                <Route path="/quiz" element={<QuizPage />} />
+                <Route path="/quiz/:id" element={<QuizPage />} />
+            </Route>
 
             {/* Protected pages — wrapped in AppLayout (sidebar + topbar) */}
             <Route element={<ProtectedRoute />}>

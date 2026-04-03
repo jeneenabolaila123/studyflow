@@ -16,6 +16,16 @@ Route::get('/ping', function () {
         'message' => 'API is working',
     ], 200);
 });
+Route::get('/ai/test', function () {
+
+    $response = \Illuminate\Support\Facades\Http::post('http://127.0.0.1:11434/api/generate', [
+        'model' => 'qwen:0.5b',
+        'prompt' => 'Say hello in one sentence',
+        'stream' => false,
+    ]);
+
+    return $response->json();
+});
 Route::prefix('auth')->group(function () {
 
     Route::post('/register', [AuthController::class, 'register']);
@@ -50,14 +60,12 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-Route::middleware(['auth:sanctum', 'throttle:ai'])
-    ->prefix('ai')
-    ->group(function () {
-
-        Route::post('/summarize', [AiController::class, 'summarize']);
-
-        Route::post('/quiz', [AiController::class, 'quiz']);
-
-        Route::post('/chat', [AiController::class, 'chat']);
-
+Route::prefix('ai')->group(function () {
+Route::post('/generate-quiz', [AiController::class, 'generateQuiz']);
+    Route::post('/summarize', [AiController::class, 'summarize']);
+    Route::post('/quiz', [AiController::class, 'quiz']);
+    Route::post('/chat', [AiController::class, 'chat']);
+Route::post('/questions', [AiController::class, 'generateQuestions']);
+Route::post('/check-answer', [AiController::class, 'checkAnswer']);
+Route::post('/generate-one', [AiController::class, 'generateQuestion']);
 });

@@ -129,7 +129,7 @@ export default function AiToolsPage() {
             gradient: "linear-gradient(135deg, #f0fdf4 0%, #bbf7d0 100%)",
             iconBg: "rgba(34,197,94,0.15)",
             color: "#22c55e",
-            onClick: () => navigate("/notes"),
+            onClick: () => navigate("/notes?tool=quiz"),
             delay: 80,
         },
         {
