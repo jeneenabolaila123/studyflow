@@ -125,6 +125,11 @@ export default function LoginPage() {
                 setFieldErrors(err.response?.data?.errors || {});
             } else if (status === 401) {
                 setError("Invalid email or password.");
+            } else if (status === 403) {
+                navigate("/verify-email", {
+                    replace: true,
+                    state: { email },
+                });
             } else {
                 setError(
                     err?.response?.data?.message ||

@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { Lightbulb, MessageSquareText } from "lucide-react";
 
 // ---- Icons -------------------------------------------------------
 function DashboardIcon() {
@@ -173,6 +174,17 @@ export default function Sidebar({ open, onClose }) {
                     </NavLink>
 
                     <NavLink
+                        to="/summaries"
+                        className={({ isActive }) =>
+                            `sidebar-link ${isActive ? "active" : ""}`
+                        }
+                        onClick={onClose}
+                    >
+                        <NotesIcon />
+                        My Summaries
+                    </NavLink>
+
+                    <NavLink
                         to="/quiz"
                         className={({ isActive }) =>
                             `sidebar-link ${isActive ? "active" : ""}`
@@ -181,6 +193,28 @@ export default function Sidebar({ open, onClose }) {
                     >
                         <QuizIcon />
                         Quiz Challenge
+                    </NavLink>
+
+                    <NavLink
+                        to="/recommendations"
+                        className={({ isActive }) =>
+                            `sidebar-link ${isActive ? "active" : ""}`
+                        }
+                        onClick={onClose}
+                    >
+                        <Lightbulb className="sidebar-icon" strokeWidth={1.8} />
+                        Recommendations
+                    </NavLink>
+
+                    <NavLink
+                        to="/feedback"
+                        className={({ isActive }) =>
+                            `sidebar-link ${isActive ? "active" : ""}`
+                        }
+                        onClick={onClose}
+                    >
+                        <MessageSquareText className="sidebar-icon" strokeWidth={1.8} />
+                        Feedback
                     </NavLink>
 
                     <div

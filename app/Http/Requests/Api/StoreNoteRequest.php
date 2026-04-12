@@ -16,13 +16,31 @@ class StoreNoteRequest extends FormRequest
         return [
             'title'        => ['required', 'string', 'max:255'],
             'description'  => ['nullable', 'string', 'max:2000'],
-
-            // Exactly one source of content is required.
-            // text_content is required when pdf is absent, and prohibits pdf when present.
-            'text_content' => ['required_without:pdf', 'string', 'min:20', 'prohibits:pdf'],
-
-            // pdf is required when text_content is absent; only PDF files accepted.
-            'pdf'          => ['required_without:text_content', 'file', 'mimes:pdf', 'max:51200'],
+            'text_content' => ['nullable', 'string', 'min:20'],
+            'pdf'          => ['nullable', 'file', 'mimes:pdf', 'max:51200'],
+            'question'     => ['nullable', 'string', 'max:1000'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $hasPdf = $this->hasFile('pdf');
+            $hasText = filled($this->input('text_content'));
+
+            if (!$hasPdf && !$hasText) {
+                $validator->errors()->add(
+                    'pdf',
+                    'Please upload a PDF or enter text content.'
+                );
+            }
+
+            if ($hasPdf && $hasText) {
+                $validator->errors()->add(
+                    'text_content',
+                    'Please use only one source: upload a PDF or enter text content, not both.'
+                );
+            }
+        });
     }
 }

@@ -23,6 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(HandleCors::class);
         $middleware->redirectGuestsTo('/login');
+
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\AdminMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {
@@ -30,7 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (ValidationException $e, Request $request) {
-            if (! ($request->is('api/*') || $request->expectsJson())) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
@@ -42,7 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (AuthenticationException $e, Request $request) {
-            if (! ($request->is('api/*') || $request->expectsJson())) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
@@ -53,7 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (AuthorizationException $e, Request $request) {
-            if (! ($request->is('api/*') || $request->expectsJson())) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
@@ -64,7 +68,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
-            if (! ($request->is('api/*') || $request->expectsJson())) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
@@ -75,7 +79,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (ModelNotFoundException $e, Request $request) {
-            if (! ($request->is('api/*') || $request->expectsJson())) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
@@ -86,7 +90,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (MethodNotAllowedHttpException $e, Request $request) {
-            if (! ($request->is('api/*') || $request->expectsJson())) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
@@ -97,7 +101,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (TooManyRequestsHttpException $e, Request $request) {
-            if (! ($request->is('api/*') || $request->expectsJson())) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
@@ -108,7 +112,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (\Throwable $e, Request $request) {
-            if (! ($request->is('api/*') || $request->expectsJson())) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
@@ -121,4 +125,5 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => 'Server error.',
             ], 500);
         });
-    })->create();
+    })
+    ->create();

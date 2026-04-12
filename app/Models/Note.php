@@ -16,6 +16,7 @@ class Note extends Model
         'file_size',
         'status',
         'source_type',
+        'is_featured',
         'text_content',
         'quiz',
         'ai_summary',
@@ -26,6 +27,7 @@ class Note extends Model
     {
         return [
             'file_size' => 'integer',
+            'is_featured' => 'boolean',
             'quiz' => 'array',
             'ai_summary_generated_at' => 'datetime',
         ];

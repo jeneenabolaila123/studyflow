@@ -162,7 +162,10 @@ export default function RegisterPage() {
                 password,
                 password_confirmation: passwordConfirmation,
             });
-            navigate("/dashboard", { replace: true });
+            navigate("/verify-email", {
+                replace: true,
+                state: { email },
+            });
         } catch (err) {
             const status = err?.response?.status;
             if (status === 422) {

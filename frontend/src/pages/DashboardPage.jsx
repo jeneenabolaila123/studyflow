@@ -144,6 +144,19 @@ function StatCard({ icon, iconClass, value, label }) {
     );
 }
 
+function formatPercent(n) {
+    const num = Number(n);
+    if (Number.isNaN(num)) return "0%";
+    return `${Math.round(num)}%`;
+}
+
+function truncate(text, max = 88) {
+    const t = String(text || "").trim();
+    if (!t) return "";
+    if (t.length <= max) return t;
+    return `${t.slice(0, max - 1)}…`;
+}
+
 function RecentNoteRow({ note }) {
     const label = note.mime_type?.includes("pdf")
         ? "PDF"
@@ -276,6 +289,9 @@ export default function DashboardPage() {
     const [uploadSuccess, setUploadSuccess] = useState(false);
     const [uploadError, setUploadError] = useState("");
 
+    // ── Recommendations ──
+    const [weakTopics, setWeakTopics] = useState([]);
+
     const fileInputRef = useRef(null);
 
     // ── Load notes ──
@@ -286,12 +302,22 @@ export default function DashboardPage() {
             const res = await axiosClient.get("/notes");
             setNotes(res.data?.data || []);
         } catch (err) {
-            if (err?.response?.status !== 401)
+            if (err?.response?.status !== 401) {
                 setError(
                     err?.response?.data?.message || "Failed to load notes."
                 );
+            }
         } finally {
             setLoading(false);
+        }
+    }, []);
+
+    const loadInsights = useCallback(async () => {
+        try {
+            const rec = await axiosClient.get("/recommendations");
+            setWeakTopics(rec.data?.data || []);
+        } catch {
+            // silent: dashboard should still load even if these fail
         }
     }, []);
 
@@ -299,19 +325,27 @@ export default function DashboardPage() {
         load();
     }, [load]);
 
+    useEffect(() => {
+        loadInsights();
+    }, [loadInsights]);
+
     // ── Drag & drop handlers ──
     const handleDragOver = (e) => {
         e.preventDefault();
         setIsDragging(true);
     };
+
     const handleDragLeave = () => setIsDragging(false);
+
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragging(false);
         const droppedFile = e.dataTransfer.files[0];
         if (droppedFile) setFile(droppedFile);
     };
+
     const handleDropZoneClick = () => fileInputRef.current?.click();
+
     const handleFileInput = (e) => {
         if (e.target.files[0]) setFile(e.target.files[0]);
     };
@@ -319,24 +353,51 @@ export default function DashboardPage() {
     // ── Upload handler ──
     const handleUpload = async (e) => {
         e.preventDefault();
-        if (!title.trim()) {
+
+        const trimmedTitle = title.trim();
+        const trimmedDescription = description.trim();
+        const trimmedText = text_content.trim();
+        const trimmedQuestion = aiQuestion.trim();
+
+        if (!trimmedTitle && !file) {
             setUploadError("Title is required.");
             return;
         }
-        if (!file && !text_content.trim()) {
+
+        if (!file && !trimmedText) {
             setUploadError("Please drop a file or paste your notes.");
             return;
         }
+
         setUploading(true);
         setUploadError("");
+
         try {
             const formData = new FormData();
-            formData.append("title", title);
-            formData.append("description", description);
-            if (file) formData.append("file", file);
-            if (text_content) formData.append("text_content", text_content);
-            if (aiQuestion.trim()) formData.append("question", aiQuestion);
+
+            formData.append("title", trimmedTitle || file?.name || "Untitled Note");
+
+            if (trimmedDescription) {
+                formData.append("description", trimmedDescription);
+            }
+
+            if (file) {
+                formData.append("pdf", file);
+            } else if (trimmedText) {
+                formData.append("text_content", trimmedText);
+            }
+
+            if (trimmedQuestion) {
+                formData.append("question", trimmedQuestion);
+            }
+
+            console.log("FORM DATA:");
+            for (const pair of formData.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+
             await axiosClient.post("/notes", formData);
+
             setUploadSuccess(true);
             setTitle("");
             setDescription("");
@@ -344,12 +405,24 @@ export default function DashboardPage() {
             setTextContent("");
             setAiQuestion("");
             load();
+
             setTimeout(() => setUploadSuccess(false), 3000);
         } catch (err) {
-            setUploadError(
-                err?.response?.data?.message ||
-                    "Upload failed. Please try again."
-            );
+            console.log("UPLOAD STATUS:", err.response?.status);
+            console.log("UPLOAD DATA:", err.response?.data);
+            console.log("UPLOAD ERRORS:", err.response?.data?.errors);
+
+            const validationErrors = err?.response?.data?.errors;
+
+            if (validationErrors) {
+                const firstError = Object.values(validationErrors)[0]?.[0];
+                setUploadError(firstError || "Validation failed.");
+            } else {
+                setUploadError(
+                    err?.response?.data?.message ||
+                        "Upload failed. Please try again."
+                );
+            }
         } finally {
             setUploading(false);
         }
@@ -358,7 +431,7 @@ export default function DashboardPage() {
     const totalNotes = notes.length;
     const aiSummaries = notes.filter((n) => n.ai_summary).length;
     const filesUploaded = notes.filter((n) => n.has_file).length;
-    const aiUsage = aiSummaries; // grows as more summaries are generated
+    const aiUsage = aiSummaries;
     const recentAiActivity = notes
         .filter((n) => n.ai_summary)
         .slice(0, 5)
@@ -368,13 +441,13 @@ export default function DashboardPage() {
             title: n.title,
             date: n.updated_at || n.created_at,
         }));
+
     const firstName = user?.name?.split(" ")[0] || "there";
 
     if (loading) return <PageSpinner />;
 
     return (
         <div className="dashboard-page dash-fade-in">
-            {/* ── Page header ── */}
             <div className="page-header">
                 <h1>
                     Good day, {firstName} <span className="wave">👋</span>
@@ -387,7 +460,6 @@ export default function DashboardPage() {
 
             {error && <div className="alert alert-error">{error}</div>}
 
-            {/* ── Stats ── */}
             <div className="stats-grid">
                 <StatCard
                     icon={<NotesIcon />}
@@ -415,7 +487,6 @@ export default function DashboardPage() {
                 />
             </div>
 
-            {/* ── Quiz Challenge Card ── */}
             <div className="section-card" style={{ marginBottom: "24px" }}>
                 <div
                     style={{
@@ -509,7 +580,7 @@ export default function DashboardPage() {
                             Start Quiz Challenge
                         </Link>
                     </div>
-                    {/* Background decoration */}
+
                     <div
                         style={{
                             position: "absolute",
@@ -522,6 +593,7 @@ export default function DashboardPage() {
                             zIndex: 1,
                         }}
                     ></div>
+
                     <div
                         style={{
                             position: "absolute",
@@ -537,12 +609,10 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* ── Upload card ── */}
             <div className="upload-card">
                 <h2 className="upload-card-heading">Add Study Material</h2>
 
                 <form onSubmit={handleUpload} className="upload-form">
-                    {/* Title + Description row */}
                     <div className="upload-meta-row">
                         <div className="upload-field">
                             <label className="upload-label">
@@ -555,6 +625,7 @@ export default function DashboardPage() {
                                 onChange={(e) => setTitle(e.target.value)}
                             />
                         </div>
+
                         <div className="upload-field">
                             <label className="upload-label">
                                 Description{" "}
@@ -569,7 +640,6 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* Drop zone */}
                     <div
                         className={`drop-zone${
                             isDragging ? " drop-zone--active" : ""
@@ -625,12 +695,10 @@ export default function DashboardPage() {
                         )}
                     </div>
 
-                    {/* Divider */}
                     <div className="upload-divider">
                         <span>or paste your notes</span>
                     </div>
 
-                    {/* Text content */}
                     <textarea
                         className="upload-textarea"
                         placeholder="Paste or write your study notes here…"
@@ -639,7 +707,6 @@ export default function DashboardPage() {
                         rows={5}
                     />
 
-                    {/* Optional AI question */}
                     <div className="upload-field">
                         <label className="upload-label">
                             Ask a question about your notes{" "}
@@ -653,17 +720,16 @@ export default function DashboardPage() {
                         />
                     </div>
 
-                    {/* Feedback */}
                     {uploadError && (
                         <div className="alert alert-error">{uploadError}</div>
                     )}
+
                     {uploadSuccess && (
                         <div className="alert alert-success">
                             <CheckCircleIcon /> Note uploaded successfully!
                         </div>
                     )}
 
-                    {/* Submit */}
                     <button
                         type="submit"
                         className="btn btn-primary upload-submit"
@@ -679,7 +745,6 @@ export default function DashboardPage() {
                 </form>
             </div>
 
-            {/* ── Recent AI Activity ── */}
             {recentAiActivity.length > 0 && (
                 <div className="section-card ai-activity-card">
                     <div className="section-card-header">
@@ -690,6 +755,7 @@ export default function DashboardPage() {
                             AI Tools <ArrowRightIcon />
                         </Link>
                     </div>
+
                     <div className="ai-activity-list">
                         {recentAiActivity.map((item, i) => (
                             <div
@@ -710,12 +776,13 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="ai-activity-time">
                                     {item.date
-                                        ? new Date(
-                                              item.date
-                                          ).toLocaleDateString("en-US", {
-                                              month: "short",
-                                              day: "numeric",
-                                          })
+                                        ? new Date(item.date).toLocaleDateString(
+                                              "en-US",
+                                              {
+                                                  month: "short",
+                                                  day: "numeric",
+                                              }
+                                          )
                                         : ""}
                                 </div>
                             </div>
@@ -724,7 +791,43 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* ── Recent notes ── */}
+            <div className="section-card">
+                <div className="section-card-header">
+                    <div className="section-card-title">Weak Topics</div>
+                    <Link to="/recommendations" className="btn btn-sm btn-ghost">
+                        View all <ArrowRightIcon />
+                    </Link>
+                </div>
+
+                {weakTopics.length === 0 ? (
+                    <div className="empty-state">
+                        <p>No weak topics yet. Take a quiz to generate recommendations.</p>
+                    </div>
+                ) : (
+                    weakTopics
+                        .slice(0, 4)
+                        .map((t) => (
+                            <div key={t.id} className="recent-note">
+                                <div className="recent-note-left">🎯</div>
+                                <div className="recent-note-content">
+                                    <div className="recent-note-title">{t.topic}</div>
+                                    <div className="recent-note-meta">
+                                        <span className="badge badge-accent">
+                                            {formatPercent(t.weakness_percent)}
+                                        </span>
+                                        <span className="badge badge-default">
+                                            {t.wrong_count}/{t.total_count}
+                                        </span>
+                                        <span className="badge badge-default">
+                                            {truncate(t.recommendation || "You need more revision in this topic.")}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                )}
+            </div>
+
             <div className="section-card">
                 <div className="section-card-header">
                     <div className="section-card-title">Recent Notes</div>

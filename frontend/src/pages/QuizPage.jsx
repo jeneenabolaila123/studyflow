@@ -1,164 +1,438 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
-
 const TOTAL = 10;
 
+function normalizeQuestions(raw) {
+    if (!Array.isArray(raw)) return [];
+
+    return raw
+        .map((item) => {
+            if (!item || typeof item !== "object") return null;
+
+            const options = Array.isArray(item.options)
+                ? item.options.map(String).filter(Boolean)
+                : [];
+
+            let answer = typeof item.answer === "string" ? item.answer : "";
+
+            if (!answer && Number.isInteger(item.correct_index) && options[item.correct_index]) {
+                answer = String(options[item.correct_index]);
+            }
+
+            if (!options.length || !item.question) return null;
+
+            return {
+                topic: item.topic || "General",
+                question: String(item.question),
+                options,
+                answer,
+            };
+        })
+        .filter(Boolean);
+}
+
 export default function QuizPage() {
-    const [currentQuestion, setCurrentQuestion] = useState(null);
-    const [nextQuestionData, setNextQuestionData] = useState(null);
+    const { id } = useParams();
 
-    const historyRef = useRef([]);
-    const answersRef = useRef([]);
+    const [notes, setNotes] = useState([]);
+    const [notesLoading, setNotesLoading] = useState(true);
+    const [notesError, setNotesError] = useState("");
 
-    const [answer, setAnswer] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    const [count, setCount] = useState(1);
-    const [finished, setFinished] = useState(false);
     const [noteId, setNoteId] = useState(null);
 
-    // RESET AI
+    const [questions, setQuestions] = useState([]);
+    const [current, setCurrent] = useState(0);
+    const [answers, setAnswers] = useState({});
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+
+    const [finished, setFinished] = useState(false);
+    const [score, setScore] = useState(0);
+
+    // RESET AI (best-effort)
     useEffect(() => {
-        axiosClient.post("/ai/reset");
+        axiosClient.post("/ai/reset").catch(() => {});
     }, []);
 
-    // LOAD NOTE
+    // Load notes for picker (also supports /quiz/:id preselect)
     useEffect(() => {
-        const init = async () => {
+        let mounted = true;
+
+        const load = async () => {
+            setNotesLoading(true);
+            setNotesError("");
+            setError("");
+
             try {
                 const res = await axiosClient.get("/notes");
-                const notes = res.data?.data || [];
+                const payload = res.data?.data;
+                const list = Array.isArray(payload)
+                    ? payload
+                    : Array.isArray(payload?.data)
+                      ? payload.data
+                      : [];
 
-                if (!notes.length) {
-                    setError("No notes found.");
+                if (!mounted) return;
+
+                setNotes(list);
+
+                if (!list.length) {
+                    setNotesError("No notes found.");
+                    setNoteId(null);
                     return;
                 }
 
-                setNoteId(notes[0].id);
-            } catch {
-                setError("Failed to load notes.");
+                const routeNoteId = id ? Number(id) : null;
+                const routeIsValid = routeNoteId && Number.isFinite(routeNoteId);
+                const inList = routeIsValid
+                    ? list.some((n) => Number(n?.id) === routeNoteId)
+                    : false;
+
+                setNoteId(inList ? routeNoteId : list[0].id);
+            } catch (err) {
+                if (!mounted) return;
+                setNotesError(err?.response?.data?.message || "Failed to load notes.");
+                setNoteId(null);
+            } finally {
+                if (mounted) setNotesLoading(false);
             }
         };
 
-        init();
-    }, []);
+        load();
 
-    // FETCH QUESTION
-    const fetchBetterQuestion = async () => {
-        try {
-            const [q1, q2] = await Promise.all([
-                axiosClient.post("/ai/generate-one", { note_id: noteId }),
-                axiosClient.post("/ai/generate-one", { note_id: noteId }),
-            ]);
+        return () => {
+            mounted = false;
+        };
+    }, [id]);
 
-            const question1 = q1.data?.question;
-            const question2 = q2.data?.question;
+    const questionsCount = questions.length;
+    const lastIndex = Math.max(0, questionsCount - 1);
 
-            if (!question1) return question2;
-            if (!question2) return question1;
+    const totalCount = useMemo(
+        () => (questionsCount ? questionsCount : TOTAL),
+        [questionsCount]
+    );
 
-            return question1.length > question2.length ? question1 : question2;
-        } catch {
-            return null;
-        }
-    };
+    const q = questions[current] || null;
+    const currentNumber = useMemo(() => current + 1, [current]);
+    const selected = answers[current] ?? null;
+    const isLast = questionsCount ? current >= lastIndex : true;
 
-    // INITIAL LOAD
-    useEffect(() => {
+    const generateQuiz = async () => {
         if (!noteId) return;
 
-        const init = async () => {
-            setLoading(true);
+        setLoading(true);
+        setError("");
 
-            const first = await fetchBetterQuestion();
-            const second = await fetchBetterQuestion();
+        setFinished(false);
+        setScore(0);
+        setCurrent(0);
+        setAnswers({});
 
-            if (!first) {
-                setError("AI failed");
-                setLoading(false);
+        try {
+            const res = await axiosClient.post("/ai/quiz", {
+                note_id: Number(noteId),
+                count: TOTAL,
+            });
+
+            const rawQuestions = res.data?.data?.questions ?? res.data?.questions ?? [];
+            const normalized = normalizeQuestions(rawQuestions);
+
+            if (!normalized.length) {
+                setQuestions([]);
+                setError("No questions generated for this note.");
                 return;
             }
 
-            setCurrentQuestion(first);
-            setNextQuestionData(second);
-
-            historyRef.current = [first];
-
+            setQuestions(normalized);
+        } catch (e) {
+            setQuestions([]);
+            setError(e?.response?.data?.message || "Failed to generate quiz.");
+        } finally {
             setLoading(false);
-        };
-
-        init();
-    }, [noteId]);
-
-    // NEXT QUESTION
-    const nextQuestion = async () => {
-        if (!answer.trim()) return;
-
-        answersRef.current.push({
-            question: currentQuestion,
-            answer: answer,
-        });
-
-        if (count >= TOTAL) {
-            setFinished(true);
-            console.log("ALL ANSWERS:", answersRef.current);
-            return;
         }
-
-        if (!nextQuestionData) {
-            setError("Loading next...");
-            return;
-        }
-
-        const newCurrent = nextQuestionData;
-
-        setCurrentQuestion(newCurrent);
-        setCount((c) => c + 1);
-
-        historyRef.current.push(newCurrent);
-
-        setAnswer("");
-
-        fetchBetterQuestion().then((q) => {
-            if (q) setNextQuestionData(q);
-        });
     };
 
-    // UI
-    if (error) return <p>{error}</p>;
+    // Auto-generate when note changes (so the picker drives the quiz)
+    useEffect(() => {
+        if (!noteId) return;
+        generateQuiz();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [noteId]);
 
-    if (finished) {
-        return (
-            <div style={{ textAlign: "center" }}>
-                <h2>Finished 🎉</h2>
-                <p>Total Questions: {TOTAL}</p>
+    const selectAnswer = (opt) => {
+        if (!questionsCount) return;
+        if (finished) return;
 
-                <button onClick={() => console.log(answersRef.current)}>
-                    Show Answers
-                </button>
-            </div>
-        );
-    }
+        setAnswers((prev) => ({
+            ...prev,
+            [current]: opt,
+        }));
+    };
+
+    const goPrev = () => setCurrent((c) => Math.max(0, c - 1));
+    const goNext = () => {
+        if (!questionsCount) return;
+        setCurrent((c) => Math.min(lastIndex, c + 1));
+    };
+
+    const submit = async () => {
+        if (!questionsCount) return;
+
+        const results = questions.map((qq, index) => {
+            const chosen = answers[index] ?? "";
+            return {
+                topic: qq?.topic || "General",
+                selected_answer: chosen,
+                correct_answer: qq?.answer || "",
+            };
+        });
+
+        const computedScore = results.reduce((acc, r) => {
+            if (r.selected_answer && r.selected_answer === r.correct_answer) return acc + 1;
+            return acc;
+        }, 0);
+
+        setScore(computedScore);
+        setFinished(true);
+
+        axiosClient.post("/quiz-results", { results }).catch(() => {});
+    };
 
     return (
-        <div style={{ maxWidth: 600, margin: "auto" }}>
-            <h2>Question {count}</h2>
+        <div className="dashboard-page page-enter">
+            <div className="page-header">
+                <h1 className="page-title">Quiz</h1>
+                <p className="page-desc">
+                    Choose a note/PDF and answer questions like an exam.
+                </p>
+            </div>
 
-            {loading && <p>AI thinking...</p>}
+            {notesError ? <div className="alert alert-error">{notesError}</div> : null}
+            {error ? <div className="alert alert-error">{error}</div> : null}
 
-            <p>{currentQuestion}</p>
+            <div className="section-card">
+                <div className="section-card-title">Quiz Settings</div>
 
-            <textarea
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                placeholder="Type your answer..."
-                style={{ width: "100%", minHeight: 80 }}
-            />
+                <div
+                    style={{
+                        display: "flex",
+                        gap: 10,
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                    }}
+                >
+                    <select
+                        className="input"
+                        value={noteId ?? ""}
+                        onChange={(e) => setNoteId(Number(e.target.value))}
+                        disabled={notesLoading || !notes.length || loading}
+                        style={{ minWidth: 260, flex: 1 }}
+                        aria-label="Select note"
+                    >
+                        {notes.map((n) => (
+                            <option key={n.id} value={n.id}>
+                                {n.title || `Note #${n.id}`}
+                            </option>
+                        ))}
+                    </select>
 
-            <br />
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={generateQuiz}
+                        disabled={!noteId || notesLoading || loading}
+                    >
+                        {loading ? "Generating…" : "Generate Quiz"}
+                    </button>
+                </div>
 
-            <button onClick={nextQuestion}>Next</button>
+                <div style={{ marginTop: 10, fontSize: 12, color: "var(--color-muted)" }}>
+                    {notesLoading
+                        ? "Loading notes…"
+                        : notes.length
+                          ? `Target length: ${TOTAL} questions (AI may return fewer)`
+                          : "Upload a note first to generate a quiz."}
+                </div>
+            </div>
+
+            <div className="section-card" style={{ marginBottom: 14 }}>
+                <div className="section-card-title">Exam</div>
+
+                {!noteId && !notesLoading ? (
+                    <div className="empty-state" style={{ padding: 12 }}>
+                        <div className="empty-state-title">No note selected</div>
+                        <div className="empty-state-desc">Select a note above to start.</div>
+                    </div>
+                ) : null}
+
+                {noteId && !questionsCount && loading ? (
+                    <div style={{ padding: 12, fontSize: 13, color: "var(--color-muted)" }}>
+                        AI is generating your quiz…
+                    </div>
+                ) : null}
+
+                {noteId && !questionsCount && !loading && !finished ? (
+                    <div style={{ padding: 12, fontSize: 13, color: "var(--color-muted)" }}>
+                        Click “Generate Quiz” to start.
+                    </div>
+                ) : null}
+
+                {finished ? (
+                    <div style={{ paddingTop: 4 }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-text)" }}>
+                            Submitted
+                        </div>
+                        <div style={{ marginTop: 6, fontSize: 13, color: "var(--color-muted)" }}>
+                            Score:{" "}
+                            <span style={{ color: "var(--color-text)", fontWeight: 700 }}>
+                                {score}
+                            </span>{" "}
+                            / {totalCount}
+                        </div>
+
+                        <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={generateQuiz}
+                                disabled={loading}
+                            >
+                                {loading ? "Generating…" : "Try Again"}
+                            </button>
+                        </div>
+                    </div>
+                ) : q ? (
+                    <div>
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "flex-end",
+                                justifyContent: "space-between",
+                                gap: 10,
+                            }}
+                        >
+                            <div>
+                                <div className="quiz-num">Question {currentNumber}</div>
+                                <div className="quiz-text" style={{ fontSize: 12, color: "var(--color-muted)" }}>
+                                    {currentNumber} / {questionsCount}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            style={{
+                                marginTop: 12,
+                                padding: 14,
+                                borderRadius: 12,
+                                border: "1px solid var(--color-border)",
+                                background: "var(--color-bg)",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    fontSize: 15,
+                                    fontWeight: 700,
+                                    color: "var(--color-text)",
+                                    lineHeight: 1.5,
+                                }}
+                            >
+                                {q.question}
+                            </div>
+                        </div>
+
+                        <div
+                            className="mt-4"
+                            style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                        >
+                            {(q.options || []).map((opt, i) => {
+                                const isChosen = selected === opt;
+
+                                return (
+                                    <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => selectAnswer(opt)}
+                                        disabled={loading}
+                                        aria-pressed={isChosen}
+                                        className="w-full"
+                                        style={{
+                                            textAlign: "left",
+                                            padding: "12px 14px",
+                                            borderRadius: 14,
+                                            border: isChosen
+                                                ? "2px solid var(--color-accent)"
+                                                : "1px solid var(--color-sidebar)",
+                                            background: "var(--color-sidebar)",
+                                            color: "var(--color-card)",
+                                            fontSize: 14,
+                                            fontWeight: 600,
+                                            boxShadow: "var(--shadow-sm)",
+                                            transition: "var(--transition)",
+                                            opacity: loading ? 0.75 : 1,
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (loading) return;
+                                            e.currentTarget.style.background = "var(--color-sidebar-hover)";
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = "var(--color-sidebar)";
+                                        }}
+                                    >
+                                        {opt}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div
+                            style={{
+                                marginTop: 16,
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: 10,
+                                flexWrap: "wrap",
+                            }}
+                        >
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={goPrev}
+                                disabled={current === 0 || loading}
+                            >
+                                Previous
+                            </button>
+
+                            {isLast ? (
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={submit}
+                                    disabled={loading}
+                                >
+                                    Submit
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={goNext}
+                                    disabled={loading}
+                                >
+                                    Next
+                                </button>
+                            )}
+                        </div>
+
+                        <div style={{ marginTop: 10, fontSize: 12, color: "var(--color-muted)" }}>
+                            Selected answers: {Object.keys(answers).length} / {questionsCount}
+                        </div>
+                    </div>
+                ) : null}
+            </div>
         </div>
     );
 }

@@ -17,7 +17,10 @@ export default function NoteForm({ onCreated }) {
         setError("");
         setFieldErrors({});
 
-        const hasText = Boolean(textContent && textContent.trim().length);
+        const trimmedTitle = title.trim();
+        const trimmedDescription = description.trim();
+        const trimmedText = textContent.trim();
+        const hasText = Boolean(trimmedText);
 
         if (!file && !hasText) {
             setError("Please upload a file or paste some text.");
@@ -29,25 +32,25 @@ export default function NoteForm({ onCreated }) {
         try {
             const formData = new FormData();
 
-            formData.append("title", title);
+            formData.append("title", trimmedTitle || file?.name || "Untitled Note");
 
-            if (description) {
-                formData.append("description", description);
+            if (trimmedDescription) {
+                formData.append("description", trimmedDescription);
             }
 
             if (file) {
                 formData.append("pdf", file);
+            } else if (hasText) {
+                // ابعتي text_content فقط إذا ما في ملف
+                formData.append("text_content", trimmedText);
             }
 
-            if (hasText) {
-                formData.append("text_content", textContent.trim());
+            console.log("FORM DATA:");
+            for (const pair of formData.entries()) {
+                console.log(pair[0], pair[1]);
             }
 
-            await axiosClient.post("/notes", formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
-            });
+            await axiosClient.post("/notes", formData);
 
             setTitle("");
             setDescription("");
@@ -56,11 +59,15 @@ export default function NoteForm({ onCreated }) {
 
             onCreated?.();
         } catch (err) {
-            console.log("API ERROR:", err.response?.data);
+            console.log("UPLOAD STATUS:", err.response?.status);
+            console.log("UPLOAD DATA:", err.response?.data);
+            console.log("UPLOAD ERRORS:", err.response?.data?.errors);
+
             const status = err?.response?.status;
 
             if (status === 422) {
                 setFieldErrors(err.response?.data?.errors || {});
+                setError(err.response?.data?.message || "Validation failed.");
             } else if (status === 403) {
                 setError("Forbidden.");
             } else if (status === 401) {
@@ -89,9 +96,9 @@ export default function NoteForm({ onCreated }) {
                     placeholder="e.g. Chapter 1 notes"
                 />
 
-                {fieldErrors.title?.length && (
+                {fieldErrors.title?.length ? (
                     <div className="field-error">{fieldErrors.title[0]}</div>
-                )}
+                ) : null}
             </div>
 
             <div className="field">
@@ -111,11 +118,11 @@ export default function NoteForm({ onCreated }) {
                     placeholder="Short description..."
                 />
 
-                {fieldErrors.description?.length && (
+                {fieldErrors.description?.length ? (
                     <div className="field-error">
                         {fieldErrors.description[0]}
                     </div>
-                )}
+                ) : null}
             </div>
 
             <div className="field">
@@ -138,9 +145,9 @@ export default function NoteForm({ onCreated }) {
                     onChange={(e) => setFile(e.target.files?.[0] || null)}
                 />
 
-                {fieldErrors.file?.length && (
-                    <div className="field-error">{fieldErrors.file[0]}</div>
-                )}
+                {fieldErrors.pdf?.length ? (
+                    <div className="field-error">{fieldErrors.pdf[0]}</div>
+                ) : null}
             </div>
 
             <div className="field">
@@ -170,18 +177,18 @@ export default function NoteForm({ onCreated }) {
                     placeholder="Write or paste your note text here..."
                 />
 
-                {fieldErrors.text_content?.length && (
+                {fieldErrors.text_content?.length ? (
                     <div className="field-error">
                         {fieldErrors.text_content[0]}
                     </div>
-                )}
+                ) : null}
             </div>
 
-            {error && (
+            {error ? (
                 <div className="alert alert-error" style={{ marginBottom: 12 }}>
                     {error}
                 </div>
-            )}
+            ) : null}
 
             <button
                 className="btn btn-primary"

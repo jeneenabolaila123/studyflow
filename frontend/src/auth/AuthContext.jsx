@@ -3,10 +3,15 @@ import axiosClient from "../api/axiosClient";
 
 const AuthContext = createContext(null);
 
+const PENDING_VERIFY_EMAIL_KEY = "pendingVerifyEmail";
+
 export function AuthProvider({ children }) {
     const [token, setToken] = useState(() => localStorage.getItem("token"));
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [pendingVerifyEmail, setPendingVerifyEmail] = useState(() =>
+        localStorage.getItem(PENDING_VERIFY_EMAIL_KEY)
+    );
 
     const setAuthToken = (newToken) => {
         if (newToken) {
@@ -18,6 +23,18 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const setPendingEmailForVerification = (email) => {
+        const next = (email || "").trim();
+
+        if (next) {
+            localStorage.setItem(PENDING_VERIFY_EMAIL_KEY, next);
+            setPendingVerifyEmail(next);
+        } else {
+            localStorage.removeItem(PENDING_VERIFY_EMAIL_KEY);
+            setPendingVerifyEmail(null);
+        }
+    };
+
     const fetchMe = async () => {
         if (!localStorage.getItem("token")) {
             setUser(null);
@@ -26,7 +43,7 @@ export function AuthProvider({ children }) {
 
         const res = await axiosClient.get("/auth/me");
 
-        setUser(res.data?.data || null);
+        setUser(res.data?.user ?? null);
     };
 
     const login = async ({ email, password }) => {
@@ -37,9 +54,12 @@ export function AuthProvider({ children }) {
 
         const newToken = res.data?.data?.token;
 
+        // Successful login means email is verified.
+        setPendingEmailForVerification(null);
+
         setAuthToken(newToken);
 
-        await fetchMe();
+        setUser(res.data?.data?.user ?? null);
 
         return res;
     };
@@ -57,11 +77,30 @@ export function AuthProvider({ children }) {
             password_confirmation,
         });
 
-        const newToken = res.data?.data?.token;
+        // Backend sends a verification code; user must verify before login.
+        setPendingEmailForVerification(email);
 
-        setAuthToken(newToken);
+        return res;
+    };
 
-        await fetchMe();
+    const verifyCode = async ({ email, code }) => {
+        const res = await axiosClient.post("/auth/verify-code", {
+            email,
+            code,
+        });
+
+        // Verification complete; clear pending state.
+        setPendingEmailForVerification(null);
+
+        return res;
+    };
+
+    const sendVerificationCode = async (email) => {
+        const res = await axiosClient.post("/auth/send-verification-code", {
+            email,
+        });
+
+        setPendingEmailForVerification(email);
 
         return res;
     };
@@ -119,13 +158,17 @@ export function AuthProvider({ children }) {
         () => ({
             token,
             user,
+            pendingVerifyEmail,
             loading,
             login,
             register,
+            verifyCode,
+            sendVerificationCode,
+            setPendingVerifyEmail: setPendingEmailForVerification,
             logout,
             fetchMe,
         }),
-        [token, user, loading]
+        [token, user, pendingVerifyEmail, loading]
     );
 
     return (

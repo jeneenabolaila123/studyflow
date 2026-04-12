@@ -126,6 +126,9 @@ class AuthController extends Controller
             return ApiResponse::error('Verify your email first.', 403);
         }
 
+        $user->last_login_at = now();
+        $user->save();
+
         $token = $user->createToken('api')->plainTextToken;
 
         return ApiResponse::success([

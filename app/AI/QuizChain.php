@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Http;
 
 class QuizChain
 {
-    
+
     protected $endpoint = 'http://127.0.0.1:8001/generate';
 
     public function run($text, $difficulty = "medium", $count = 5)
@@ -26,6 +26,7 @@ class QuizChain
 Generate $count multiple choice questions from the following text.
 
 Each question must include:
+- topic (short, 1-4 words)
 - question
 - 4 options
 - correct answer
@@ -37,6 +38,7 @@ JSON format:
 {
  "questions":[
   {
+    "topic":"...",
    "question":"...",
    "options":["A","B","C","D"],
    "answer":"..."
@@ -75,7 +77,6 @@ PROMPT;
             }
 
             return $decoded['questions'];
-
         } catch (\Throwable $e) {
 
             return [];

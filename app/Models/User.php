@@ -16,15 +16,14 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
-        'email_verified_at',
         'verification_code',
         'reset_code',
+        'email_verified_at',
         'is_admin',
-        'phone',
-        'avatar',
         'status',
+        'last_login_at',
+        'last_reminder_sent_at',
     ];
-
     /**
      * Get the attributes that should be cast.
      */
@@ -34,12 +33,23 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'is_admin' => 'boolean',
             'password' => 'hashed',
+            'last_login_at' => 'datetime',
+            'last_reminder_sent_at' => 'datetime',
         ];
     }
-
     public function notes()
     {
         return $this->hasMany(Note::class);
+    }
+
+    public function weakTopics()
+    {
+        return $this->hasMany(WeakTopic::class);
+    }
+
+    public function feedback()
+    {
+        return $this->hasMany(Feedback::class);
     }
 
     /**

@@ -2,18 +2,6 @@
 
 return [
 
-    /*
-    |--------------------------------------------------------------------------
-    | Third Party Services
-    |--------------------------------------------------------------------------
-    |
-    | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
-    |
-    */
-
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
@@ -36,13 +24,13 @@ return [
     ],
 
     'ollama' => [
-        'base_url' => env('OLLAMA_BASE_URL', 'http://localhost:11434'),
-        'model' => env('OLLAMA_MODEL', 'phi3:mini'),
-        'timeout' => env('OLLAMA_TIMEOUT', 600),
-        'connect_timeout' => env('OLLAMA_CONNECT_TIMEOUT', 10),
-        'min_chunk_tokens' => env('OLLAMA_MIN_CHUNK_TOKENS', 2000),
-        'max_chunk_tokens' => env('OLLAMA_MAX_CHUNK_TOKENS', 3000),
-        'chunk_chars_per_token' => env('OLLAMA_CHUNK_CHARS_PER_TOKEN', 4),
+        'base_url' => env('OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
+        'model' => env('OLLAMA_MODEL', 'qwen3:1.7b'),
+        'timeout' => (int) env('OLLAMA_TIMEOUT', 120),
+        'connect_timeout' => (int) env('OLLAMA_CONNECT_TIMEOUT', 10),
+        'min_chunk_tokens' => (int) env('OLLAMA_MIN_CHUNK_TOKENS', 2000),
+        'max_chunk_tokens' => (int) env('OLLAMA_MAX_CHUNK_TOKENS', 3000),
+        'chunk_chars_per_token' => (int) env('OLLAMA_CHUNK_CHARS_PER_TOKEN', 4),
     ],
 
 ];
