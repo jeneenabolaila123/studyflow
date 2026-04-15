@@ -1,231 +1,168 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from pdf2image import convert_from_path
-import pytesseract
-import httpx
-import os
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List
+import requests
 import re
-import uuid
 
-# =========================
-# 🔥 APP FIRST (مهم جدًا)
-# =========================
-app = FastAPI()
+app = FastAPI(title="StudyFlow Quiz API")
 
-# =========================
-# 🔥 CORS
-# =========================
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
+OLLAMA_MODEL = "qwen3:1.7b"
 
-# =========================
-# 🔥 CONFIG
-# =========================
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+class QuizGenerateRequest(BaseModel):
+    chapter_title: str
+    text: str
+    difficulty: str = "medium"
+    count: int = 10
 
-# 🔥 timeout أكبر
-client = httpx.AsyncClient(timeout=60)
 
-# =========================
-# 🔥 HELPER (IMPORTANT)
-# =========================
-def extract_text(res):
+class QuestionItem(BaseModel):
+    question: str
+    topic: str
+    options: List[str]
+    correct_letter: str
+    correct_answer: str
+
+
+class QuizGenerateResponse(BaseModel):
+    chapter_title: str
+    questions: List[QuestionItem]
+    raw_output: str
+
+
+def build_quiz_prompt(extracted_text: str, count: int = 10, difficulty: str = "medium") -> str:
+    return f"""
+You are a strict university professor creating exam-quality MCQs.
+
+Task:
+Generate exactly {count} multiple-choice questions based only on the provided text.
+
+Requirements:
+- Difficulty: {difficulty}
+- Each question must test understanding, not copying
+- Each question must focus on a different concept
+- Keep questions clear and concise
+- Include a short topic label for each question
+- Each question must have exactly 4 options: A, B, C, D
+- Only one option is correct
+- Do not repeat ideas
+- Do not include explanations
+- Do not include introductions, comments, reasoning, progress messages, or analysis
+- Do not write anything before Q1
+- Do not write anything after Q{count}
+
+STRICT FORMAT:
+
+Q1: question text
+Topic: topic name
+A) option
+B) option
+C) option
+D) option
+Correct: A
+
+Q2: question text
+Topic: topic name
+A) option
+B) option
+C) option
+D) option
+Correct: B
+
+Repeat until Q{count}.
+
+TEXT:
+\"\"\"
+{extracted_text}
+\"\"\"
+""".strip()
+
+
+def call_ollama(prompt: str) -> str:
     try:
-        data = res.json()
-        print("🔥 OLLAMA RESPONSE:", data)
+        response = requests.post(
+            OLLAMA_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+            },
+            timeout=120,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data.get("response", "").strip()
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Ollama request failed: {str(e)}")
 
-        if "response" in data:
-            return data["response"]
-        elif "message" in data:
-            return data["message"]["content"]
-        else:
-            return "No response from model"
 
-    except Exception as e:
-        return f"Error parsing response: {str(e)}"
+def keep_only_quiz_output(text: str) -> str:
+    start = text.find("Q1:")
+    return text[start:].strip() if start != -1 else text.strip()
 
-# =========================
-# CLEAN TEXT
-# =========================
-def clean_text(text: str):
-    text = re.sub(r"\s+", " ", text)
-    text = re.sub(r"[^a-zA-Z0-9.,!? ]", "", text)
-    return text.strip()
 
-# =========================
-# OCR UPLOAD
-# =========================
-@app.post("/ocr-upload")
-async def ocr_upload(file: UploadFile = File(...)):
-    try:
-        file_name = f"{uuid.uuid4()}.pdf"
+def parse_quiz(raw_text: str) -> List[QuestionItem]:
+    cleaned = keep_only_quiz_output(raw_text)
 
-        with open(file_name, "wb") as f:
-            f.write(await file.read())
+    pattern = re.compile(
+        r"Q\d+:\s*(.*?)\n"
+        r"Topic:\s*(.*?)\n"
+        r"A\)\s*(.*?)\n"
+        r"B\)\s*(.*?)\n"
+        r"C\)\s*(.*?)\n"
+        r"D\)\s*(.*?)\n"
+        r"Correct:\s*([ABCD])",
+        re.DOTALL
+    )
 
-        images = convert_from_path(file_name, first_page=1, last_page=3)
+    matches = pattern.findall(cleaned)
+    questions: List[QuestionItem] = []
 
-        text = ""
-        for img in images:
-            extracted = pytesseract.image_to_string(img)
-            text += extracted + " "
+    for match in matches:
+        question_text, topic, a, b, c, d, correct_letter = match
+        options = [a.strip(), b.strip(), c.strip(), d.strip()]
+        correct_index = ord(correct_letter.strip()) - ord("A")
+        correct_answer = options[correct_index]
 
-        os.remove(file_name)
+        questions.append(
+            QuestionItem(
+                question=question_text.strip(),
+                topic=topic.strip(),
+                options=options,
+                correct_letter=correct_letter.strip(),
+                correct_answer=correct_answer.strip(),
+            )
+        )
 
-        return {"text": text[:1000]}
+    return questions
 
-    except Exception as e:
-        return {"error": str(e)}
 
-# =========================
-# SUMMARY
-# =========================
-@app.post("/summary")
-async def summary(data: dict):
-    text = data.get("text", "")[:300]
+@app.post("/generate-quiz", response_model=QuizGenerateResponse)
+def generate_quiz(request: QuizGenerateRequest):
+    if not request.text.strip():
+        raise HTTPException(status_code=400, detail="Text is required.")
 
-    prompt = f"""
-Summarize in 5 short bullet points:
+    if request.count < 1 or request.count > 20:
+        raise HTTPException(status_code=400, detail="Count must be between 1 and 20.")
 
-{text}
-"""
+    prompt = build_quiz_prompt(
+        extracted_text=request.text,
+        count=request.count,
+        difficulty=request.difficulty,
+    )
 
-    try:
-        response = await client.post(OLLAMA_URL, json={
-            "model": "phi3:mini",
-            "prompt": prompt,
-            "stream": False,
-            "options": {"num_predict": 120}
-        })
+    raw_output = call_ollama(prompt)
+    questions = parse_quiz(raw_output)
 
-        result = extract_text(response)
-        return {"summary": result.strip()}
+    if len(questions) == 0:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to parse quiz questions from model output."
+        )
 
-    except Exception as e:
-        return {"error": str(e)}
-
-# =========================
-# QUESTION
-# =========================
-@app.post("/question")
-async def question(data: dict):
-    text = data.get("text", "")[:250]
-
-    prompt = f"""
-Generate ONE short question:
-
-{text}
-"""
-
-    try:
-        response = await client.post(OLLAMA_URL, json={
-            "model": "phi3:mini",
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "num_predict": 50,
-                "temperature": 0.3,
-                "top_p": 0.9,
-                "repeat_penalty": 1.1
-            }
-        })
-
-        result = extract_text(response)
-        return {"question": result.strip()}
-
-    except Exception as e:
-        return {"error": str(e)}
-
-# =========================
-# FAST QUESTION
-# =========================
-@app.post("/question-fast")
-async def question_fast(data: dict):
-    text = data.get("text", "")[:150]
-
-    prompt = f"""
-Generate ONE short university question:
-
-{text}
-"""
-
-    try:
-        response = await client.post(OLLAMA_URL, json={
-            "model": "phi3:mini",
-            "prompt": prompt,
-            "stream": False,
-            "options": {"num_predict": 50}
-        })
-
-        result = extract_text(response)
-        return {"question": result.strip()}
-
-    except Exception as e:
-        return {"error": str(e)}
-
-# =========================
-# CHAT
-# =========================
-@app.post("/chat")
-async def chat(data: dict):
-    question = data.get("question", "")
-    text = data.get("text", "")[:150]
-
-    prompt = f"""
-Answer briefly and clearly:
-
-Question: {question}
-
-Context: {text}
-"""
-
-    try:
-        response = await client.post(OLLAMA_URL, json={
-            "model": "phi3:mini",
-            "prompt": prompt,
-            "stream": False,
-            "options": {"num_predict": 100}
-        })
-
-        result = extract_text(response)
-        return {"answer": result.strip()}
-
-    except Exception as e:
-        return {"error": str(e)}
-    @app.post("/recommend")
-async def recommend(data: dict):
-    text = data.get("text", "")[:300]
-
-    prompt = f"""
-Based on this study text:
-
-{text}
-
-Give:
-1. 3 related topics
-2. 2 advanced questions
-3. 1 study tip
-
-Keep it short.
-"""
-
-    try:
-        response = await client.post(OLLAMA_URL, json={
-            "model": "phi3:mini",
-            "prompt": prompt,
-            "stream": False,
-            "options": {"num_predict": 120}
-        })
-
-        result = extract_text(response)
-        return {"recommendation": result.strip()}
-
-    except Exception as e:
-        return {"error": str(e)}
+    return QuizGenerateResponse(
+        chapter_title=request.chapter_title,
+        questions=questions,
+        raw_output=raw_output,
+    )

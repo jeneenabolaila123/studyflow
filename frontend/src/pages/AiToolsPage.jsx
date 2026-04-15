@@ -19,6 +19,7 @@ function SummaryIcon() {
         </svg>
     );
 }
+
 function QuizIcon() {
     return (
         <svg
@@ -37,6 +38,7 @@ function QuizIcon() {
         </svg>
     );
 }
+
 function AskAiIcon() {
     return (
         <svg
@@ -55,6 +57,7 @@ function AskAiIcon() {
         </svg>
     );
 }
+
 function ArrowRightIcon() {
     return (
         <svg
@@ -136,8 +139,8 @@ export default function AiToolsPage() {
             icon: <AskAiIcon />,
             title: "Ask AI",
             description:
-                "Ask any question about your study material and get instant AI-powered answers.",
-            buttonLabel: "Ask AI",
+                "Open one of your uploaded notes and ask questions about it directly from the note details page.",
+            buttonLabel: "Open Notes",
             gradient: "linear-gradient(135deg, #fdf4ff 0%, #e9d5ff 100%)",
             iconBg: "rgba(139,92,246,0.15)",
             color: "#8b5cf6",
@@ -148,7 +151,6 @@ export default function AiToolsPage() {
 
     return (
         <div className="ai-tools-page dash-fade-in">
-            {/* Header */}
             <div className="ai-tools-header">
                 <div className="ai-tools-header-badge">
                     <span>✦ Powered by AI</span>
@@ -159,14 +161,12 @@ export default function AiToolsPage() {
                 </p>
             </div>
 
-            {/* Cards grid */}
             <div className="ai-tools-grid">
                 {tools.map((tool) => (
                     <ToolCard key={tool.title} {...tool} />
                 ))}
             </div>
 
-            {/* Bottom hint */}
             <p className="ai-tools-hint">
                 Open any note from{" "}
                 <button

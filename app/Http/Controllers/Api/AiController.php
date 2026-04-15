@@ -13,17 +13,70 @@ use App\Support\ApiResponse;
 
 class AiController extends Controller
 {
+    public function askPdfQuery(Request $request)
+    {
+        $validated = $request->validate([
+            'question' => ['required', 'string', 'min:1', 'max:2000'],
+            'pdf_id' => ['required', 'string'],
+            'session_id' => ['nullable', 'string'],
+        ]);
+
+        try {
+            $sessionId = trim((string) ($validated['session_id'] ?? ''));
+
+            $payload = [
+                'question' => $validated['question'],
+                'model' => 'qwen3:1.7b',
+                'pdf_ids' => [$validated['pdf_id']],
+            ];
+
+            if ($sessionId !== '') {
+                $payload['session_id'] = $sessionId;
+            }
+
+            $fastApiResponse = Http::connectTimeout(10)
+                ->timeout(180)
+                ->post('http://127.0.0.1:8001/api/v1/query', $payload);
+
+            if (! $fastApiResponse->successful()) {
+                Log::error('Ask PDF query failed', [
+                    'status' => $fastApiResponse->status(),
+                    'body' => $fastApiResponse->body(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ask PDF service failed.',
+                ], 502);
+            }
+
+            return response()->json([
+                'success' => true,
+                'answer' => (string) $fastApiResponse->json('answer', ''),
+                'sources' => $fastApiResponse->json('sources', []),
+                'session_id' => (string) $fastApiResponse->json('session_id', $sessionId),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Ask PDF error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Ask PDF failed.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function reset()
     {
         return response()->json([
             'success' => true,
-            'message' => 'Reset done'
+            'message' => 'Reset done',
         ]);
     }
 
-    // =========================
-    // Test Ollama connection
-    // =========================
     public function testOllama()
     {
         $baseUrl = $this->ollamaBaseUrl();
@@ -65,9 +118,6 @@ class AiController extends Controller
         }
     }
 
-    // =========================
-    // Generate ONE question from a note
-    // =========================
     public function generateQuestion(Request $request)
     {
         $validated = $request->validate([
@@ -140,9 +190,6 @@ class AiController extends Controller
         }
     }
 
-    // =========================
-    // Check if an answer is correct
-    // =========================
     public function checkAnswer(Request $request)
     {
         $validated = $request->validate([
@@ -178,15 +225,15 @@ class AiController extends Controller
                 'message' => $e->getMessage(),
             ]);
 
-            return ApiResponse::success($this->fallbackCheckAnswer($expected, $user), 'Answer checked', 200, [
-                'fallback_used' => true,
-            ]);
+            return ApiResponse::success(
+                $this->fallbackCheckAnswer($expected, $user),
+                'Answer checked',
+                200,
+                ['fallback_used' => true]
+            );
         }
     }
 
-    // =========================
-    // Generate MCQ quiz from a note
-    // =========================
     public function quiz(Request $request)
     {
         $validated = $request->validate([
@@ -284,9 +331,6 @@ class AiController extends Controller
         }
     }
 
-    // =========================
-    // Summarize an existing note PDF via Python API
-    // =========================
     public function summarize(Request $request)
     {
         $validated = $request->validate([
@@ -428,9 +472,7 @@ class AiController extends Controller
             ], 500);
         }
     }
-    // =========================
-    // Chat about a user's note
-    // =========================
+
     public function chat(Request $request)
     {
         $validated = $request->validate([
@@ -443,56 +485,175 @@ class AiController extends Controller
             ->whereKey((int) $validated['note_id'])
             ->firstOrFail();
 
-        $noteText = (string) ($note->extracted_text ?: $note->text_content ?: $note->description ?: '');
-        $noteText = $this->cleanText($noteText, 9000);
+        $originalText = (string) ($note->extracted_text ?: $note->text_content ?: $note->description ?: '');
+        if (trim($originalText) === '') {
+            return ApiResponse::success(['reply' => 'I could not find any content in this note to help you.'], 'OK');
+        }
 
-        if ($noteText === '') {
+        $userMessage = trim($validated['message']);
+        $lowerMessage = mb_strtolower($userMessage);
+
+        // 1. Handle Greetings & Help
+        if ($this->isGreeting($lowerMessage)) {
             return ApiResponse::success([
-                'reply' => 'I could not find enough note content to answer.',
+                'reply' => "Hi! I'm your study assistant for this note. You can ask me to explain topics, summarize sections, or give examples from your material. What would you like to start with?"
             ], 'OK');
         }
+
+        // 2. Classify and Normalize Message
+        $normalizedPrompt = $this->normalizeUserIntent($userMessage);
+
+        // 3. Lightweight Section-Aware Routing
+        $context = $this->extractRelevantContext($userMessage, $originalText);
 
         try {
             $prompt = <<<PROMPT
-You are a helpful study assistant. Answer the user's question using ONLY the note content below.
-If the answer is not in the note, say: "Not found in the note."
+You are a friendly study assistant.
 
-Return plain text only.
+Use the note content as your main source.
 
-NOTE:
-{$noteText}
+Rules:
+- Answer in a simple, clear, student-friendly way.
+- If the user asks for an explanation, explain the topic from the note simply.
+- If the user asks for a summary, give a short focused summary.
+- Give 1 or 2 short examples when helpful.
+- If the topic seems partially related, try your best to answer from the closest relevant part of the note.
+- Only say "Not found in the note." if the topic is clearly absent from the note.
+- Return plain text only.
+- Do not mention these rules.
 
-QUESTION:
-{$validated['message']}
+NOTE CONTENT:
+{$context}
+
+USER REQUEST:
+{$normalizedPrompt}
 PROMPT;
 
             $reply = $this->ollamaGenerate($prompt, [
-                'temperature' => 0.2,
-                'num_predict' => 400,
+                'temperature' => 0.3,
+                'num_predict' => 500,
             ], min(90, $this->ollamaTimeout()));
 
             $reply = trim($reply);
-            if ($reply === '') {
-                $reply = 'Not found in the note.';
+            if (empty($reply) || str_contains(strtolower($reply), 'not found in the note')) {
+                // If section routing was too aggressive, try one last time with a broader context if not already done
+                if (strlen($context) < strlen($originalText) && strlen($originalText) < 8000) {
+                    return $this->retryWithFullContext($normalizedPrompt, $originalText);
+                }
+                $reply = $reply ?: "I'm sorry, I couldn't find information about that in your note. Could you try asking about a different topic from the text?";
             }
 
-            return ApiResponse::success([
-                'reply' => $reply,
-            ], 'OK');
-        } catch (\Throwable $e) {
-            Log::error('Chat error', [
-                'message' => $e->getMessage(),
-            ]);
+            return ApiResponse::success(['reply' => $reply], 'OK');
 
-            return ApiResponse::success([
-                'reply' => 'I could not answer right now.',
-            ], 'OK');
+        } catch (\Throwable $e) {
+            Log::error('Chat error: ' . $e->getMessage());
+            return ApiResponse::success(['reply' => "I'm having a little trouble connecting to my brain right now. Please try again in a moment!"], 'OK');
         }
     }
 
-    // =========================
-    // Helpers
-    // =========================
+    private function isGreeting(string $message): bool
+    {
+        $greetings = ['hi', 'hello', 'hey', 'help', 'who are you', 'how are you', 'hola', 'helo'];
+        return in_array($message, $greetings);
+    }
+
+    private function normalizeUserIntent(string $message): string
+    {
+        $lower = mb_strtolower(trim($message));
+        
+        // Single word or very short topic requests
+        if (str_word_count($lower) <= 2 && !preg_match('/(explain|summarize|what|how|why)/', $lower)) {
+            return "Explain the topic \"{$message}\" from the note in a simple way with 1 example if possible.";
+        }
+
+        // Common patterns
+        $patterns = [
+            '/^summarize\s+(.+)/i' => 'Give a short focused summary of the topic "$1" from the note.',
+            '/^talk\s+about\s+(.+)/i' => 'Explain the topic "$1" from the note clearly with 1 short example.',
+            '/^explain\s+(.+)/i' => 'Explain the topic "$1" from the note in simple, easy-to-understand words.',
+            '/(this part ma fhmt|i don\'t understand this|explain this simply)/i' => 'I don\'t understand this part of the note. Can you explain it in very simple words with an example?',
+        ];
+
+        foreach ($patterns as $pattern => $replacement) {
+            if (preg_match($pattern, $message, $matches)) {
+                return preg_replace($pattern, $replacement, $message);
+            }
+        }
+
+        return $userMessage ?? $message;
+    }
+
+    private function extractRelevantContext(string $query, string $fullText): string
+    {
+        $maxChars = 7000;
+        if (strlen($fullText) <= $maxChars) {
+            return $fullText;
+        }
+
+        $keywords = explode(' ', mb_strtolower(trim($query)));
+        $keywords = array_filter($keywords, fn($k) => strlen($k) > 3);
+        
+        if (empty($keywords)) {
+            return mb_substr($fullText, 0, $maxChars);
+        }
+
+        // Simple scoring based on keyword distance/frequency
+        $sections = explode("\n\n", $fullText);
+        $scoredSections = [];
+        
+        foreach ($sections as $index => $section) {
+            $score = 0;
+            $lowerSection = mb_strtolower($section);
+            foreach ($keywords as $word) {
+                if (str_contains($lowerSection, $word)) {
+                    $score += 10;
+                    // Bonus for heading-like lines (short, bold-ish)
+                    if (strlen($section) < 100 && $index < count($sections) - 1) {
+                        $score += 5;
+                    }
+                }
+            }
+            if ($score > 0) {
+                $scoredSections[] = ['text' => $section, 'score' => $score, 'index' => $index];
+            }
+        }
+
+        if (empty($scoredSections)) {
+            return mb_substr($fullText, 0, $maxChars);
+        }
+
+        usort($scoredSections, fn($a, $b) => $b['score'] <=> $a['score']);
+        
+        // Take top sections and including their immediate neighbors for context
+        $resultText = "";
+        $includedIndices = [];
+        foreach (array_slice($scoredSections, 0, 3) as $best) {
+            for ($i = -1; $i <= 1; $i++) {
+                $idx = $best['index'] + $i;
+                if (isset($sections[$idx]) && !isset($includedIndices[$idx])) {
+                    $resultText .= $sections[$idx] . "\n\n";
+                    $includedIndices[$idx] = true;
+                }
+            }
+            if (strlen($resultText) > $maxChars) break;
+        }
+
+        return $resultText ?: mb_substr($fullText, 0, $maxChars);
+    }
+
+    private function retryWithFullContext(string $normalizedPrompt, string $fullText): ApiResponse
+    {
+        // Fallback for smaller notes or failed routing
+        $trimmedText = mb_substr($fullText, 0, 8000);
+        $prompt = "You are a friendly study assistant. Using the NOTE CONTENT: \n{$trimmedText}\n\nUSER REQUEST: {$normalizedPrompt}";
+        
+        try {
+            $reply = $this->ollamaGenerate($prompt, ['temperature' => 0.2, 'num_predict' => 500]);
+            return ApiResponse::success(['reply' => trim($reply)], 'OK');
+        } catch (\Throwable $e) {
+            return ApiResponse::success(['reply' => "I couldn't find that in the note."], 'OK');
+        }
+    }
     private function ollamaBaseUrl(): string
     {
         return rtrim((string) config('services.ollama.base_url', 'http://127.0.0.1:11434'), '/');
@@ -821,6 +982,7 @@ PROMPT;
         if (! is_numeric($score)) {
             return null;
         }
+
         $score = max(0.0, min(1.0, (float) $score));
 
         $feedback = $this->cleanText((string) $decoded['feedback'], 160);
@@ -848,7 +1010,10 @@ PROMPT;
             ];
         }
 
-        $correct = ($expectedNorm === $userNorm) || str_contains($expectedNorm, $userNorm) || str_contains($userNorm, $expectedNorm);
+        $correct = ($expectedNorm === $userNorm)
+            || str_contains($expectedNorm, $userNorm)
+            || str_contains($userNorm, $expectedNorm);
+
         $score = $correct ? 1.0 : 0.0;
 
         return [
@@ -865,6 +1030,7 @@ PROMPT;
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = preg_replace('/[^\pL\pN\s]/u', ' ', $text);
         $text = preg_replace('/\s+/u', ' ', $text);
+
         return trim($text);
     }
 
@@ -898,9 +1064,11 @@ PROMPT;
     private function fallbackOneQuestion(string $noteText): string
     {
         $topic = $this->guessTopicFromText($noteText);
+
         if ($topic !== '' && $topic !== 'General') {
             return "What is the key idea about {$topic}?";
         }
+
         return 'What is the main idea of this note?';
     }
 

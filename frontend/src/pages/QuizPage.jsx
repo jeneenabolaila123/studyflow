@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
-const TOTAL = 10;
+const BATCH_SIZE = 3;
 
 function normalizeQuestions(raw) {
     if (!Array.isArray(raw)) return [];
@@ -42,7 +42,6 @@ export default function QuizPage() {
     const [noteId, setNoteId] = useState(null);
 
     const [questions, setQuestions] = useState([]);
-    const [current, setCurrent] = useState(0);
     const [answers, setAnswers] = useState({});
 
     const [loading, setLoading] = useState(false);
@@ -51,12 +50,10 @@ export default function QuizPage() {
     const [finished, setFinished] = useState(false);
     const [score, setScore] = useState(0);
 
-    // RESET AI (best-effort)
     useEffect(() => {
         axiosClient.post("/ai/reset").catch(() => {});
     }, []);
 
-    // Load notes for picker (also supports /quiz/:id preselect)
     useEffect(() => {
         let mounted = true;
 
@@ -108,74 +105,63 @@ export default function QuizPage() {
     }, [id]);
 
     const questionsCount = questions.length;
-    const lastIndex = Math.max(0, questionsCount - 1);
 
-    const totalCount = useMemo(
-        () => (questionsCount ? questionsCount : TOTAL),
-        [questionsCount]
-    );
-
-    const q = questions[current] || null;
-    const currentNumber = useMemo(() => current + 1, [current]);
-    const selected = answers[current] ?? null;
-    const isLast = questionsCount ? current >= lastIndex : true;
-
-    const generateQuiz = async () => {
+    const generateQuiz = async (isAppending = false) => {
         if (!noteId) return;
 
         setLoading(true);
         setError("");
 
-        setFinished(false);
-        setScore(0);
-        setCurrent(0);
-        setAnswers({});
+        if (!isAppending) {
+            setFinished(false);
+            setScore(0);
+            setAnswers({});
+            setQuestions([]);
+        }
 
         try {
+            const previousQuestions = isAppending ? questions.map(q => q.question) : [];
+            const usedTopics = isAppending ? questions.map(q => q.topic).filter(Boolean) : [];
+
             const res = await axiosClient.post("/ai/quiz", {
                 note_id: Number(noteId),
-                count: TOTAL,
+                count: BATCH_SIZE,
+                previous_questions: previousQuestions,
+                used_topics: usedTopics
             });
 
             const rawQuestions = res.data?.data?.questions ?? res.data?.questions ?? [];
             const normalized = normalizeQuestions(rawQuestions);
 
             if (!normalized.length) {
-                setQuestions([]);
+                if (!isAppending) setQuestions([]);
                 setError("No questions generated for this note.");
                 return;
             }
 
-            setQuestions(normalized);
+            setQuestions(prev => isAppending ? [...prev, ...normalized] : normalized);
         } catch (e) {
-            setQuestions([]);
+            if (!isAppending) setQuestions([]);
             setError(e?.response?.data?.message || "Failed to generate quiz.");
         } finally {
             setLoading(false);
         }
     };
 
-    // Auto-generate when note changes (so the picker drives the quiz)
     useEffect(() => {
         if (!noteId) return;
-        generateQuiz();
+        generateQuiz(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [noteId]);
 
-    const selectAnswer = (opt) => {
+    const selectAnswer = (index, opt) => {
         if (!questionsCount) return;
         if (finished) return;
 
         setAnswers((prev) => ({
             ...prev,
-            [current]: opt,
+            [index]: opt,
         }));
-    };
-
-    const goPrev = () => setCurrent((c) => Math.max(0, c - 1));
-    const goNext = () => {
-        if (!questionsCount) return;
-        setCurrent((c) => Math.min(lastIndex, c + 1));
     };
 
     const submit = async () => {
@@ -211,7 +197,7 @@ export default function QuizPage() {
             </div>
 
             {notesError ? <div className="alert alert-error">{notesError}</div> : null}
-            {error ? <div className="alert alert-error">{error}</div> : null}
+            {error ? <div className="alert alert-error mb-4">{error}</div> : null}
 
             <div className="section-card">
                 <div className="section-card-title">Quiz Settings</div>
@@ -238,28 +224,43 @@ export default function QuizPage() {
                             </option>
                         ))}
                     </select>
-
-                    <button
-                        type="button"
-                        className="btn btn-primary"
-                        onClick={generateQuiz}
-                        disabled={!noteId || notesLoading || loading}
-                    >
-                        {loading ? "Generating…" : "Generate Quiz"}
-                    </button>
                 </div>
 
                 <div style={{ marginTop: 10, fontSize: 12, color: "var(--color-muted)" }}>
                     {notesLoading
-                        ? "Loading notes…"
+                        ? "Loading notes..."
                         : notes.length
-                          ? `Target length: ${TOTAL} questions (AI may return fewer)`
+                          ? `Generating in batches of ${BATCH_SIZE} questions.`
                           : "Upload a note first to generate a quiz."}
                 </div>
             </div>
 
             <div className="section-card" style={{ marginBottom: 14 }}>
-                <div className="section-card-title">Exam</div>
+                <div className="section-card-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>Exam</span>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => generateQuiz(false)}
+                            disabled={!noteId || notesLoading || loading}
+                            style={{ padding: "6px 12px", fontSize: "13px" }}
+                        >
+                            {loading && questions.length === 0 ? "Generating..." : "Generate New Quiz"}
+                        </button>
+                        {questionsCount > 0 && !finished && (
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={() => generateQuiz(true)}
+                                disabled={loading || finished}
+                                style={{ padding: "6px 12px", fontSize: "13px" }}
+                            >
+                                {loading && questions.length > 0 ? "Adding..." : "Generate 3 More Questions"}
+                            </button>
+                        )}
+                    </div>
+                </div>
 
                 {!noteId && !notesLoading ? (
                     <div className="empty-state" style={{ padding: 12 }}>
@@ -270,165 +271,150 @@ export default function QuizPage() {
 
                 {noteId && !questionsCount && loading ? (
                     <div style={{ padding: 12, fontSize: 13, color: "var(--color-muted)" }}>
-                        AI is generating your quiz…
+                        AI is generating your quiz...
                     </div>
                 ) : null}
 
                 {noteId && !questionsCount && !loading && !finished ? (
                     <div style={{ padding: 12, fontSize: 13, color: "var(--color-muted)" }}>
-                        Click “Generate Quiz” to start.
+                        Ready to start. Click Generate.
                     </div>
                 ) : null}
 
                 {finished ? (
-                    <div style={{ paddingTop: 4 }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-text)" }}>
-                            Submitted
+                    <div style={{ padding: "20px 14px", textAlign: "center" }}>
+                        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: "var(--color-text)" }}>
+                            Quiz Completed!
                         </div>
-                        <div style={{ marginTop: 6, fontSize: 13, color: "var(--color-muted)" }}>
+                        <div style={{ fontSize: 16, color: "var(--color-muted)" }}>
                             Score:{" "}
                             <span style={{ color: "var(--color-text)", fontWeight: 700 }}>
                                 {score}
                             </span>{" "}
-                            / {totalCount}
+                            / {questionsCount}
                         </div>
 
-                        <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
                             <button
                                 type="button"
                                 className="btn btn-primary"
-                                onClick={generateQuiz}
+                                onClick={() => generateQuiz(false)}
                                 disabled={loading}
                             >
-                                {loading ? "Generating…" : "Try Again"}
+                                {loading ? "Generating..." : "Try Again (New Quiz)"}
                             </button>
                         </div>
                     </div>
-                ) : q ? (
-                    <div>
-                        <div
-                            style={{
-                                display: "flex",
-                                alignItems: "flex-end",
-                                justifyContent: "space-between",
-                                gap: 10,
-                            }}
-                        >
-                            <div>
-                                <div className="quiz-num">Question {currentNumber}</div>
-                                <div className="quiz-text" style={{ fontSize: 12, color: "var(--color-muted)" }}>
-                                    {currentNumber} / {questionsCount}
-                                </div>
-                            </div>
-                        </div>
+                ) : questionsCount > 0 ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                        {questions.map((q, current) => {
+                            const currentNumber = current + 1;
+                            const selected = answers[current] ?? null;
 
-                        <div
-                            style={{
-                                marginTop: 12,
-                                padding: 14,
-                                borderRadius: 12,
-                                border: "1px solid var(--color-border)",
-                                background: "var(--color-bg)",
-                            }}
-                        >
-                            <div
-                                style={{
-                                    fontSize: 15,
-                                    fontWeight: 700,
-                                    color: "var(--color-text)",
-                                    lineHeight: 1.5,
-                                }}
-                            >
-                                {q.question}
-                            </div>
-                        </div>
-
-                        <div
-                            className="mt-4"
-                            style={{ display: "flex", flexDirection: "column", gap: 10 }}
-                        >
-                            {(q.options || []).map((opt, i) => {
-                                const isChosen = selected === opt;
-
-                                return (
-                                    <button
-                                        key={i}
-                                        type="button"
-                                        onClick={() => selectAnswer(opt)}
-                                        disabled={loading}
-                                        aria-pressed={isChosen}
-                                        className="w-full"
+                            return (
+                                <div key={current} style={{ paddingBottom: "16px", borderBottom: current === questionsCount - 1 ? "none" : "1px solid var(--color-border)" }}>
+                                    <div
                                         style={{
-                                            textAlign: "left",
-                                            padding: "12px 14px",
-                                            borderRadius: 14,
-                                            border: isChosen
-                                                ? "2px solid var(--color-accent)"
-                                                : "1px solid var(--color-sidebar)",
-                                            background: "var(--color-sidebar)",
-                                            color: "var(--color-card)",
-                                            fontSize: 14,
-                                            fontWeight: 600,
-                                            boxShadow: "var(--shadow-sm)",
-                                            transition: "var(--transition)",
-                                            opacity: loading ? 0.75 : 1,
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (loading) return;
-                                            e.currentTarget.style.background = "var(--color-sidebar-hover)";
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = "var(--color-sidebar)";
+                                            display: "flex",
+                                            alignItems: "flex-end",
+                                            justifyContent: "space-between",
+                                            gap: 10,
                                         }}
                                     >
-                                        {opt}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                        <div>
+                                            <div className="quiz-num" style={{ fontWeight: "bold" }}>Question {currentNumber}</div>
+                                            {q.topic && (
+                                                <div className="quiz-text" style={{ fontSize: 12, color: "var(--color-muted)" }}>
+                                                    Topic: {q.topic}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            marginTop: 12,
+                                            padding: 14,
+                                            borderRadius: 12,
+                                            border: "1px solid var(--color-border)",
+                                            background: "var(--color-bg)",
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                fontSize: 15,
+                                                fontWeight: 500,
+                                                color: "var(--color-text)",
+                                                lineHeight: 1.5,
+                                            }}
+                                        >
+                                            {q.question}
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className="mt-4"
+                                        style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                                    >
+                                        {(q.options || []).map((opt, i) => {
+                                            const isChosen = selected === opt;
+
+                                            return (
+                                                <button
+                                                    key={i}
+                                                    type="button"
+                                                    onClick={() => selectAnswer(current, opt)}
+                                                    disabled={loading}
+                                                    aria-pressed={isChosen}
+                                                    className="w-full"
+                                                    style={{
+                                                        textAlign: "left",
+                                                        padding: "12px 14px",
+                                                        borderRadius: 14,
+                                                        border: isChosen
+                                                            ? "2px solid var(--color-accent)"
+                                                            : "1px solid var(--color-sidebar)",
+                                                        background: isChosen ? "var(--color-sidebar-hover)" : "var(--color-sidebar)",
+                                                        color: "var(--color-card)",
+                                                        fontSize: 14,
+                                                        fontWeight: 600,
+                                                        boxShadow: "var(--shadow-sm)",
+                                                        transition: "var(--transition)",
+                                                        opacity: loading ? 0.8 : 1,
+                                                        cursor: loading ? "not-allowed" : "pointer"
+                                                    }}
+                                                >
+                                                    {opt}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
 
                         <div
                             style={{
                                 marginTop: 16,
                                 display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
+                                flexDirection: "column",
                                 gap: 10,
-                                flexWrap: "wrap",
+                                alignItems: "center"
                             }}
                         >
+                            <div style={{ fontSize: 13, color: "var(--color-muted)", fontWeight: "bold" }}>
+                                Answered: {Object.keys(answers).length} / {questionsCount}
+                            </div>
+                            
                             <button
                                 type="button"
-                                className="btn btn-secondary"
-                                onClick={goPrev}
-                                disabled={current === 0 || loading}
+                                className="btn btn-primary"
+                                onClick={submit}
+                                disabled={loading || Object.keys(answers).length === 0}
+                                style={{ minWidth: 200, padding: "10px 0" }}
                             >
-                                Previous
+                                Submit All Answers
                             </button>
-
-                            {isLast ? (
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    onClick={submit}
-                                    disabled={loading}
-                                >
-                                    Submit
-                                </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    onClick={goNext}
-                                    disabled={loading}
-                                >
-                                    Next
-                                </button>
-                            )}
-                        </div>
-
-                        <div style={{ marginTop: 10, fontSize: 12, color: "var(--color-muted)" }}>
-                            Selected answers: {Object.keys(answers).length} / {questionsCount}
                         </div>
                     </div>
                 ) : null}

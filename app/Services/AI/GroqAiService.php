@@ -155,12 +155,22 @@ PROMPT;
         // Limit context to prevent token overflow
         $context = $this->limitText($context, self::MAX_TEXT_LENGTH);
 
-        // Build system message with context
-        $systemContent = 'You are a helpful academic assistant. ';
+        // Build system message for the study assistant
+        $systemContent = "You are a friendly study assistant.\n\n" .
+            "Rules:\n" .
+            "- Use the note content as your main source.\n" .
+            "- If the user's question is informal, vague, or refers to \"this part\", \"that section\", or a topic title, try to infer the most relevant section from the note before saying it is missing.\n" .
+            "- Answer in a simple and student-friendly way.\n" .
+            "- If possible, explain the idea in plain language first.\n" .
+            "- Then give 1-2 short examples when helpful.\n" .
+            "- If the user asks for a summary, give a short focused summary.\n" .
+            "- If the question is ambiguous, ask one brief clarification question instead of saying \"Not found in the note.\"\n" .
+            "- Only say \"Not found in the note\" if the topic is clearly absent.\n" .
+            "- Keep the answer grounded in the note content.\n" .
+            "- Return plain text only.\n\n";
 
         if (!empty($context)) {
-            $systemContent .= "Use the following material to answer questions:\n\n{$context}\n\n";
-            $systemContent .= 'If the answer is not in the material, say so clearly.';
+            $systemContent .= "STUDY MATERIAL YOU SHOULD USE:\n{$context}\n\n";
         }
 
         // Add system message to beginning of conversation
@@ -171,7 +181,7 @@ PROMPT;
             ]
         ];
 
-        // Add user messages (limit history to last 10 messages to avoid token overflow)
+        // Add recent user messages
         $recentMessages = array_slice($messages, -10);
         $conversationMessages = array_merge($conversationMessages, $recentMessages);
 
