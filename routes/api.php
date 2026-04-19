@@ -1,47 +1,49 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Api\NoteController;
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\FeedbackController;
+use App\Http\Controllers\Api\QuizController;
 use App\Http\Controllers\Api\QuizResultController;
 use App\Http\Controllers\Api\RecommendationController;
 use App\Http\Controllers\Api\SummaryController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminUsersController;
 use App\Http\Controllers\Api\Admin\AdminNotesController;
-use App\Support\ApiResponse;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ExternalQuizController;
 
+Route::get('/external-quiz', [ExternalQuizController::class, 'index']);
+Route::post('/askpdf/query', [AiController::class, 'askPdfQuery']);
 /*
 |--------------------------------------------------------------------------
 | CORS Preflight (IMPORTANT)
 |--------------------------------------------------------------------------
 */
+Route::post('/askpdf/query', [AiController::class, 'askPdfQuery']);
 
-Route::options('/{any}', function () {
-    return response()->json([], 200);
-})->where('any', '.*');
-
-/*
-|--------------------------------------------------------------------------
-| Public test routes
-|--------------------------------------------------------------------------
-*/
 Route::get('/ping', function () {
     return response()->json([
         'ok' => true,
         'message' => 'API is working',
     ]);
 });
-
+Route::post('/askpdf/query', [AiController::class, 'askPdfQuery']);
 /*
 |--------------------------------------------------------------------------
-| AI routes (PUBLIC for now)
+| AI routes
 |--------------------------------------------------------------------------
 */
 Route::post('/ai/reset', [AiController::class, 'reset']);
 Route::post('/ai/summarize', [AiController::class, 'summarize'])->middleware('auth:sanctum');
+
+/*
+|--------------------------------------------------------------------------
+| Quiz generation route
+|--------------------------------------------------------------------------
+*/
+Route::post('/ai/quiz', [QuizController::class, 'generate']);
 
 /*
 |--------------------------------------------------------------------------
@@ -52,7 +54,6 @@ Route::prefix('ai')->group(function () {
     Route::get('/test', [AiController::class, 'testOllama']);
     Route::post('/generate-one', [AiController::class, 'generateQuestion']);
     Route::post('/check-answer', [AiController::class, 'checkAnswer']);
-    Route::post('/quiz', [AiController::class, 'quiz']);
 });
 
 /*
@@ -84,7 +85,6 @@ Route::prefix('auth')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', fn(\Illuminate\Http\Request $request) => $request->user());
 
-    // 🔴 شلنا summarize من هون
     Route::post('/ai/chat', [AiController::class, 'chat']);
 
     Route::get('/recommendations', [RecommendationController::class, 'index']);
@@ -101,7 +101,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/notes/{id}', [NoteController::class, 'destroy']);
     Route::get('/notes/{id}/download', [NoteController::class, 'download']);
 
-    // Summaries
     Route::get('/summaries', [SummaryController::class, 'index']);
     Route::get('/summaries/{id}', [SummaryController::class, 'show']);
     Route::post('/summaries', [SummaryController::class, 'store']);

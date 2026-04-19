@@ -1,4 +1,3 @@
-import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 import AdminRoute from "./routes/AdminRoute.jsx";
 import AppLayout from "./components/AppLayout.jsx";
@@ -21,17 +20,21 @@ import AdminUsersPage from "./pages/AdminUsersPage.jsx";
 import AdminNotesPage from "./pages/AdminNotesPage.jsx";
 import DocumentViewerPage from "./pages/DocumentViewerPage.jsx";
 import AnalyticsPage from "./pages/AnalyticsPage.jsx";
-import HomeFrame from "./pages/HomeFrame.jsx";
 import DocumentFrame from "./pages/DocumentFrame.jsx";
 import RevisionTab from "./pages/RevisionTab.jsx";
 import SettingsTab from "./components/SettingsTab.jsx";
-import { useAuth } from "./auth/AuthContext.jsx";
+import QuizPage from "./pages/QuizPage.jsx";
 
+import { useAuth } from "./auth/AuthContext.jsx";
+import { Navigate, Route, Routes } from "react-router-dom"; 
+import ExternalQuizPage from "./pages/ExternalQuizPage";
+import HomePage from "./pages/HomePage";
 function App() {
     const { token } = useAuth();
 
     return (
         <Routes>
+            <Route path="/external-quiz" element={<ExternalQuizPage />} />
             <Route element={<AdminRoute />}>
                 <Route element={<AdminLayout />}>
                     <Route path="/admin" element={<AdminDashboardPage />} />
@@ -47,13 +50,9 @@ function App() {
                 }
             />
 
-            {/* public pages */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
-
-            {/* مؤقتًا خلي quiz public لحتى تجربيه */}
-            <Route path="/quiz" element={<HomeFrame />} />
 
             <Route element={<ProtectedRoute />}>
                 <Route element={<AppLayout />}>
@@ -70,6 +69,8 @@ function App() {
                     <Route path="/document-viewer" element={<DocumentViewerPage />} />
                     <Route path="/recommendations" element={<RecommendationsPage />} />
                     <Route path="/feedback" element={<FeedbackPage />} />
+                    <Route path="/quiz" element={<QuizPage />} />
+                    <Route path="/quiz/:id" element={<QuizPage />} />
                 </Route>
             </Route>
 

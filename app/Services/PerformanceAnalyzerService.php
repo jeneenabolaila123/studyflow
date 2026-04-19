@@ -6,37 +6,38 @@ use Illuminate\Support\Facades\File;
 
 class PerformanceAnalyzerService
 {
-    protected string $logPath;
-    protected OllamaClientService $api;
-    protected array $records = [];
+    protected $logPath;
+    protected $api;
+    protected $records = [];
 
-    public function __construct(?string $logPath = null)
+    public function __construct($logPath = null)
     {
         $this->logPath = $logPath ?: storage_path('app/review_logs.json');
+
         $this->api = new OllamaClientService(
             env('OLLAMA_URL', 'http://127.0.0.1:11434'),
-            'gemma:2b',
+            env('OLLAMA_MODEL', 'qwen3:1.7b'),
             40
         );
 
         $this->records = $this->loadLogs();
     }
 
-    protected function loadLogs(): array
+    protected function loadLogs()
     {
-        if (File::exists($this->logPath)) {
-            try {
-                $data = json_decode(File::get($this->logPath), true);
-                return is_array($data) ? $data : [];
-            } catch (\Throwable $e) {
-                return [];
-            }
+        if (!File::exists($this->logPath)) {
+            return [];
         }
 
-        return [];
+        try {
+            $data = json_decode(File::get($this->logPath), true);
+            return is_array($data) ? $data : [];
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
-    protected function saveLogs(): void
+    protected function saveLogs()
     {
         File::put(
             $this->logPath,
@@ -44,25 +45,25 @@ class PerformanceAnalyzerService
         );
     }
 
-    public function logReview(array $question, bool $wasCorrect, float $timeSpent): void
+    public function logReview(array $question, $wasCorrect, $timeSpent)
     {
         $this->records[] = [
-            'question_text' => $question['question_text'] ?? $question['question'] ?? '',
-            'was_correct' => $wasCorrect,
-            'time_spent' => $timeSpent,
+            'question_text' => (string) ($question['question_text'] ?? ($question['question'] ?? '')),
+            'was_correct' => (bool) $wasCorrect,
+            'time_spent' => (float) $timeSpent,
             'timestamp' => now()->toIso8601String(),
         ];
 
         $this->saveLogs();
     }
 
-    public function analyzeFast(array $deck = []): array
+    public function analyzeFast(array $deck = [])
     {
         $perQuestion = [];
-        $totalTime = 0;
+        $totalTime = 0.0;
 
         foreach ($this->records as $rec) {
-            $q = $rec['question_text'] ?? '';
+            $q = trim((string) ($rec['question_text'] ?? ''));
 
             if ($q === '') {
                 continue;
@@ -85,8 +86,9 @@ class PerformanceAnalyzerService
                 $perQuestion[$q]['fails'] += 1;
             }
 
-            $perQuestion[$q]['time'][] = (float)($rec['time_spent'] ?? 0);
-            $totalTime += (float)($rec['time_spent'] ?? 0);
+            $spent = (float) ($rec['time_spent'] ?? 0);
+            $perQuestion[$q]['time'][] = $spent;
+            $totalTime += $spent;
         }
 
         $weak = [];
@@ -96,7 +98,7 @@ class PerformanceAnalyzerService
         foreach ($perQuestion as $q => $data) {
             $accuracy = $data['total'] > 0
                 ? $data['correct'] / $data['total']
-                : 0;
+                : 0.0;
 
             if ($accuracy < 0.5) {
                 $weak[] = $q;
@@ -111,12 +113,12 @@ class PerformanceAnalyzerService
 
         $avgTime = count($this->records) > 0
             ? $totalTime / count($this->records)
-            : 0;
+            : 0.0;
 
         return [
-            'weak' => array_slice($weak, 0, 5),
-            'strong' => array_slice($strong, 0, 5),
-            'leech' => array_slice($leech, 0, 5),
+            'weak' => array_slice(array_values($weak), 0, 5),
+            'strong' => array_slice(array_values($strong), 0, 5),
+            'leech' => array_slice(array_values($leech), 0, 5),
             'avg_time' => round($avgTime, 2),
             'total_reviews' => count($this->records),
         ];
@@ -124,25 +126,38 @@ class PerformanceAnalyzerService
 
     public function generateFeedback(array $stats): string
     {
+        $weakTopics = $this->stringify(isset($stats['weak']) && is_array($stats['weak']) ? $stats['weak'] : []);
+        $strongTopics = $this->stringify(isset($stats['strong']) && is_array($stats['strong']) ? $stats['strong'] : []);
+        $leechCards = $this->stringify(isset($stats['leech']) && is_array($stats['leech']) ? $stats['leech'] : []);
+        $avgTime = isset($stats['avg_time']) ? $stats['avg_time'] : 0;
+        $totalReviews = isset($stats['total_reviews']) ? $stats['total_reviews'] : 0;
+
         $prompt = <<<PROMPT
-Give short study advice.
+Give short study advice for a student based on flashcard review performance.
 
-Weak topics: {$this->stringify($stats['weak'] ?? [])}
-Strong topics: {$this->stringify($stats['strong'] ?? [])}
-Leech cards: {$this->stringify($stats['leech'] ?? [])}
-Average time: {$stats['avg_time'] ?? 0}
+Weak topics: {$weakTopics}
+Strong topics: {$strongTopics}
+Leech cards: {$leechCards}
+Average time: {$avgTime}
+Total reviews: {$totalReviews}
 
-Keep it short.
+Rules:
+- Keep it short.
+- Be encouraging.
+- Mention weak areas first.
+- Mention one practical next step.
+- Plain text only.
 PROMPT;
 
         try {
-            return trim($this->api->generateText($prompt));
+            $result = trim((string) $this->api->generateText($prompt));
+            return $result !== '' ? $result : 'No feedback available.';
         } catch (\Throwable $e) {
             return 'No feedback available.';
         }
     }
 
-    public function getSmartFeedback(array $deck = []): array
+    public function getSmartFeedback(array $deck = [])
     {
         $stats = $this->analyzeFast($deck);
         $feedback = $this->generateFeedback($stats);
@@ -153,8 +168,17 @@ PROMPT;
         ];
     }
 
-    protected function stringify(array $items): string
+    protected function stringify(array $items)
     {
-        return empty($items) ? 'None' : implode(', ', $items);
+        $cleaned = [];
+
+        foreach ($items as $item) {
+            $value = trim((string) $item);
+            if ($value !== '') {
+                $cleaned[] = $value;
+            }
+        }
+
+        return empty($cleaned) ? 'None' : implode(', ', $cleaned);
     }
 }
