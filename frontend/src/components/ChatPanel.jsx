@@ -40,11 +40,16 @@ export default function ChatPanel({ noteId }) {
         message: trimmed,
       });
 
-      const reply = res.data?.data?.reply ?? res.data?.reply ?? '';
+      const data = res.data?.data ?? res.data ?? {};
+      const reply = data.reply ?? '';
+      
       const aiMsg = {
         id: crypto.randomUUID?.() ?? String(Date.now() + 1),
         role: 'ai',
         text: reply || 'No reply returned.',
+        type: data.type || 'text',
+        summary_id: data.summary_id || null,
+        saved: !!data.saved_to_my_summaries
       };
 
       setMessages((current) => [...current, aiMsg]);

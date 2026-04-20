@@ -17,7 +17,7 @@ class StoreNoteRequest extends FormRequest
             'title'        => ['required', 'string', 'max:255'],
             'description'  => ['nullable', 'string', 'max:2000'],
             'text_content' => ['nullable', 'string', 'min:20'],
-            'pdf'          => ['nullable', 'file', 'mimes:pdf', 'max:51200'],
+            'pdf'          => ['nullable', 'file', 'mimes:pdf,ppt,pptx,txt', 'max:51200'],
             'question'     => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -25,20 +25,20 @@ class StoreNoteRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            $hasPdf = $this->hasFile('pdf');
+            $hasFile = $this->hasFile('pdf');
             $hasText = filled($this->input('text_content'));
 
-            if (!$hasPdf && !$hasText) {
+            if (!$hasFile && !$hasText) {
                 $validator->errors()->add(
                     'pdf',
-                    'Please upload a PDF or enter text content.'
+                    'Please upload a file or enter text content.'
                 );
             }
 
-            if ($hasPdf && $hasText) {
+            if ($hasFile && $hasText) {
                 $validator->errors()->add(
                     'text_content',
-                    'Please use only one source: upload a PDF or enter text content, not both.'
+                    'Please use only one source: upload a file or enter text content, not both.'
                 );
             }
         });

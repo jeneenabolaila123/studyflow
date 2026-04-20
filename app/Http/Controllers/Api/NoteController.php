@@ -74,11 +74,13 @@ class NoteController extends Controller
                 $extractor = app(NoteContentExtractor::class);
                 $extractedText = $extractor->extractFromStorage($storedPath, $originalFilename);
 
-                $note->forceFill([
-                    'text_content' => $extractedText,
-                    'extracted_text' => $extractedText,
-                    'extracted_text_length' => mb_strlen($extractedText),
-                ])->save();
+                if (filled($extractedText)) {
+                    $note->forceFill([
+                        'text_content' => $extractedText,
+                        'extracted_text' => $extractedText,
+                        'extracted_text_length' => mb_strlen($extractedText),
+                    ])->save();
+                }
             } catch (\Throwable $e) {
                 // Intentionally ignored: scanned/image PDFs may not contain extractable text yet.
             }
