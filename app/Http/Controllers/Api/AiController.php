@@ -26,7 +26,7 @@ class AiController extends Controller
 
             $payload = [
                 'question' => $validated['question'],
-                'model' => 'qwen3:1.7b',
+                'model' => 'phi3:mini',
                 'pdf_ids' => [$validated['pdf_id']],
             ];
 
@@ -331,233 +331,6 @@ class AiController extends Controller
         }
     }
 
-    public function summarize(Request $request)
-    {
-        $validated = $request->validate([
-            'note_id' => ['required', 'integer', 'min:1'],
-        ]);
-
-        $noteId = (int) $validated['note_id'];
-
-        try {
-            $note = Note::query()
-                ->where('user_id', $request->user()->id)
-                ->whereKey($noteId)
-                ->first();
-
-            if (! $note) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Note not found.',
-                ], 404);
-            }
-
-            $storedPath = (string) ($note->stored_path ?? '');
-            if ($storedPath === '' && isset($note->file_path)) {
-                $storedPath = (string) ($note->file_path ?? '');
-            }
-
-            if ($storedPath === '') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This note does not have a file attached.',
-                ], 422);
-            }
-
-            $filename = (string) ($note->original_filename ?: basename($storedPath));
-            $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-            $mimeType = (string) ($note->mime_type ?? '');
-
-            if ($extension !== 'pdf' && ! str_contains(strtolower($mimeType), 'pdf')) {
-                return response()->json([
-                    'success' => false,
-                    'filename' => $filename,
-                    'message' => 'Only PDF files can be summarized.',
-                ], 422);
-            }
-
-            $disk = Storage::disk('private');
-            if (! $disk->exists($storedPath)) {
-                return response()->json([
-                    'success' => false,
-                    'filename' => $filename,
-                    'message' => 'File not found on server.',
-                ], 404);
-            }
-
-            $fullPath = $disk->path($storedPath);
-
-            $pythonUrl = 'http://127.0.0.1:8002/summarize';
-            $timeout = 300;
-            $connectTimeout = 10;
-
-            $pythonResponse = Http::connectTimeout($connectTimeout)
-                ->timeout($timeout)
-                ->attach('file', file_get_contents($fullPath), $filename)
-                ->post($pythonUrl);
-
-            if (! $pythonResponse->successful()) {
-                Log::error('Python summary API failed', [
-                    'status' => $pythonResponse->status(),
-                    'body' => $pythonResponse->body(),
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'filename' => $filename,
-                    'message' => 'Python summary service failed.',
-                ], 502);
-            }
-
-            $summary = trim((string) $pythonResponse->json('summary'));
-            $pythonSuccess = $pythonResponse->json('success');
-
-            if ($summary === '') {
-                Log::warning('Python summary API returned empty summary', [
-                    'note_id' => $noteId,
-                    'python_success' => $pythonSuccess,
-                    'body' => $pythonResponse->json(),
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'filename' => $filename,
-                    'message' => 'Summary service returned an empty result.',
-                ], 502);
-            }
-
-            $title = trim((string) ($note->title ?: pathinfo($filename, PATHINFO_FILENAME)));
-            if ($title === '') {
-                $title = 'Summary for Note #' . $note->id;
-            }
-
-            try {
-                $saved = Summary::create([
-                    'user_id' => $request->user()->id,
-                    'note_id' => $note->id,
-                    'title' => $title,
-                    'source_type' => 'pdf',
-                    'summary_text' => $summary,
-                ]);
-            } catch (\Throwable $e) {
-                Log::error('Failed to save summary', [
-                    'note_id' => $noteId,
-                    'user_id' => $request->user()->id,
-                    'message' => $e->getMessage(),
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'filename' => $filename,
-                    'message' => 'Summary generated but could not be saved.',
-                ], 500);
-            }
-
-            return response()->json([
-                'success' => true,
-                'summary' => $summary,
-                'filename' => $filename,
-                'message' => 'Summary generated successfully.',
-                'summary_id' => $saved->id,
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Summarize error', [
-                'message' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Summary failed.',
-            ], 500);
-        }
-    }
-
-    public function chat(Request $request)
-    {
-        $validated = $request->validate([
-            'note_id' => ['required', 'integer', 'exists:notes,id'],
-            'message' => ['required', 'string', 'min:1', 'max:2000'],
-        ]);
-
-        $note = Note::query()
-            ->where('user_id', $request->user()->id)
-            ->whereKey((int) $validated['note_id'])
-            ->firstOrFail();
-
-        $userMessage = trim((string) $validated['message']);
-        $lowerMessage = mb_strtolower($userMessage);
-
-        if ($this->isSummaryRequest($lowerMessage)) {
-            return $this->handleChatSummary($request, $note, $userMessage);
-        }
-
-        $originalText = (string) ($note->extracted_text ?: $note->text_content ?: $note->description ?: '');
-        if (trim($originalText) === '') {
-            return ApiResponse::success([
-                'reply' => 'I could not find any content in this note to help you.'
-            ], 'OK');
-        }
-
-        if ($this->isGreeting($lowerMessage)) {
-            return ApiResponse::success([
-                'reply' => "Hi! I'm your study assistant for this note. You can ask me to explain topics, summarize sections, or give examples from your material. What would you like to start with?"
-            ], 'OK');
-        }
-
-        $normalizedPrompt = $this->normalizeUserIntent($userMessage);
-        $context = $this->extractRelevantContext($userMessage, $originalText);
-
-        try {
-            $prompt = <<<PROMPT
-You are a friendly study assistant.
-
-Use the note content as your main source.
-
-Rules:
-- Answer in a simple, clear, student-friendly way.
-- If the user asks for an explanation, explain the topic from the note simply.
-- If the user asks for a summary, give a short focused summary.
-- Give 1 or 2 short examples when helpful.
-- If the topic seems partially related, try your best to answer from the closest relevant part of the note.
-- Only say "Not found in the note." if the topic is clearly absent from the note.
-- Return plain text only.
-- Do not mention these rules.
-
-NOTE CONTENT:
-{$context}
-
-USER REQUEST:
-{$normalizedPrompt}
-PROMPT;
-
-            $reply = $this->ollamaGenerate($prompt, [
-                'temperature' => 0.3,
-                'num_predict' => 500,
-            ], min(90, $this->ollamaTimeout()));
-
-            $reply = trim($reply);
-
-            if ($reply === '' || str_contains(strtolower($reply), 'not found in the note')) {
-                if (strlen($context) < strlen($originalText) && strlen($originalText) < 8000) {
-                    return $this->retryWithFullContext($normalizedPrompt, $originalText);
-                }
-
-                $reply = $reply !== ''
-                    ? $reply
-                    : "I'm sorry, I couldn't find information about that in your note. Could you try asking about a different topic from the text?";
-            }
-
-            return ApiResponse::success(['reply' => $reply], 'OK');
-        } catch (\Throwable $e) {
-            Log::error('Chat error', [
-                'message' => $e->getMessage(),
-            ]);
-
-            return ApiResponse::success([
-                'reply' => "I'm having a little trouble connecting to my brain right now. Please try again in a moment!"
-            ], 'OK');
-        }
-    }
 
     private function isGreeting(string $message): bool
     {
@@ -588,6 +361,138 @@ PROMPT;
 
         return $message;
     }
+    public function summarize(Request $request)
+    {
+        $validated = $request->validate([
+            'note_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $noteId = (int) $validated['note_id'];
+
+        try {
+            $note = Note::query()
+                ->where('user_id', $request->user()->id)
+                ->whereKey($noteId)
+                ->first();
+
+            if (! $note) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Note not found.',
+                ], 404);
+            }
+
+            $storedPath = (string) ($note->stored_path ?? '');
+
+            if ($storedPath === '' && isset($note->file_path)) {
+                $storedPath = (string) ($note->file_path ?? '');
+            }
+
+            if ($storedPath === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This note does not have a file attached.',
+                ], 422);
+            }
+
+            $filename = (string) ($note->original_filename ?: basename($storedPath));
+            $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+            $mimeType = (string) ($note->mime_type ?? '');
+
+            if ($extension !== 'pdf' && ! str_contains(strtolower($mimeType), 'pdf')) {
+                return response()->json([
+                    'success' => false,
+                    'filename' => $filename,
+                    'message' => 'Only PDF files can be summarized.',
+                ], 422);
+            }
+
+            $disk = Storage::disk('private');
+
+            if (! $disk->exists($storedPath)) {
+                return response()->json([
+                    'success' => false,
+                    'filename' => $filename,
+                    'message' => 'File not found on server.',
+                ], 404);
+            }
+
+            $fullPath = $disk->path($storedPath);
+
+            $pythonUrl = env('SUMMARY_API_URL', 'http://127.0.0.1:8002/summarize');
+
+            // Using a very long timeout for local AI generation
+            $pythonResponse = Http::connectTimeout(10)
+                ->timeout(600) // Increased to 10 minutes
+                ->attach('file', file_get_contents($fullPath), $filename)
+                ->post($pythonUrl);
+
+            if (! $pythonResponse->successful()) {
+                Log::error('Python summary API failed', [
+                    'status' => $pythonResponse->status(),
+                    'body' => $pythonResponse->body(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'filename' => $filename,
+                    'message' => 'Python summary service failed.',
+                ], 502);
+            }
+
+            $summary = trim((string) (
+                $pythonResponse->json('summary')
+                ?? $pythonResponse->json('output')
+                ?? ''
+            ));
+
+            if ($summary === '') {
+                Log::warning('Python summary API returned empty summary', [
+                    'note_id' => $noteId,
+                    'body' => $pythonResponse->json(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'filename' => $filename,
+                    'message' => 'Summary service returned an empty result.',
+                ], 502);
+            }
+
+            $title = trim((string) ($note->title ?: pathinfo($filename, PATHINFO_FILENAME)));
+
+            if ($title === '') {
+                $title = 'Summary for Note #' . $note->id;
+            }
+
+            $saved = Summary::create([
+                'user_id' => $request->user()->id,
+                'note_id' => $note->id,
+                'title' => $title,
+                'source_type' => 'pdf',
+                'summary_text' => $summary,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'summary' => $summary,
+                'filename' => $filename,
+                'message' => 'Summary generated successfully.',
+                'summary_id' => $saved->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Summarize error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Summary failed.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
     private function extractRelevantContext(string $query, string $fullText): string
     {
@@ -690,7 +595,7 @@ PROMPT;
 
     private function ollamaModel(): string
     {
-        return (string) config('services.ollama.model', 'qwen3:1.7b');
+        return (string) config('services.ollama.model', 'phi3:mini');
     }
 
     private function ollamaTimeout(): int
@@ -818,10 +723,12 @@ PROMPT;
 
             if (trim($originalText) !== '') {
                 $prompt = $this->buildSummaryPrompt($originalText, $isBullets);
+
                 $initial = $this->ollamaGenerate($prompt, [
                     'temperature' => 0.3,
                     'num_predict' => 800,
                 ]);
+
                 $summaryText = $this->polishSummary($initial);
             } elseif ($storedPath !== '') {
                 $disk = Storage::disk('private');
@@ -829,11 +736,19 @@ PROMPT;
                 if ($disk->exists($storedPath)) {
                     $pythonResponse = Http::connectTimeout(10)
                         ->timeout(300)
-                        ->attach('file', file_get_contents($disk->path($storedPath)), basename($storedPath))
-                        ->post('http://127.0.0.1:8002/summarize');
+                        ->attach(
+                            'uploaded_file',
+                            file_get_contents($disk->path($storedPath)),
+                            basename($storedPath)
+                        )
+                        ->post(env('SUMMARY_API_URL', 'http://127.0.0.1:8002/file/upload'));
 
                     if ($pythonResponse->successful()) {
-                        $summaryText = trim((string) $pythonResponse->json('summary'));
+                        $summaryText = trim((string) (
+                            $pythonResponse->json('summary')
+                            ?? $pythonResponse->json('output')
+                            ?? ''
+                        ));
                     }
                 }
             }
@@ -867,122 +782,6 @@ PROMPT;
                 'reply' => "I encountered an error while trying to summarize this document."
             ], 'OK');
         }
-    }
-
-    private function buildSummaryPrompt(string $text, bool $bullets = false): string
-    {
-        $format = $bullets ? 'bullet points' : 'coherent academic paragraphs';
-
-        return "Summarize the following text into {$format}. Use clear, professional English. Avoid repetition. \n\nText: "
-            . mb_substr($text, 0, 8000);
-    }
-
-    private function polishSummary(string $text): string
-    {
-        try {
-            $prompt = "Rewrite and polish the following summary for better flow, academic tone, and clarity. Remove any repeated ideas or robotic phrasing. Return only the polished text.\n\nSummary: " . $text;
-
-            return trim($this->ollamaGenerate($prompt, [
-                'temperature' => 0.2,
-                'num_predict' => 850,
-            ]));
-        } catch (\Throwable $e) {
-            return $text;
-        }
-    }
-
-    private function buildGenerateOnePrompt(string $noteText, string $topic): string
-    {
-        $topicLine = $topic !== '' ? "Requested topic: {$topic}" : 'Requested topic: (not provided)';
-
-        return <<<PROMPT
-You generate exactly ONE educational question from a note.
-
-Return ONLY valid JSON.
-
-JSON schema:
-{
-  "topic": "short topic, 1-4 words",
-  "question": "one clear question, max 18 words, end with ?"
-}
-
-Rules:
-- No markdown.
-- No extra keys.
-- No explanation.
-- If topic is missing, infer it.
-
-{$topicLine}
-
-NOTE:
-{$noteText}
-PROMPT;
-    }
-
-    private function buildCheckAnswerPrompt(string $question, string $expected, string $user): string
-    {
-        return <<<PROMPT
-You are grading a student's answer.
-
-Return ONLY valid JSON with this schema:
-{
-  "correct": true|false,
-  "score": 0.0,
-  "feedback": "<= 160 chars"
-}
-
-Rules:
-- No markdown.
-- No extra keys.
-- score must be between 0 and 1.
-- Mark correct if the user's answer matches the expected answer in meaning (not necessarily exact wording).
-
-QUESTION:
-{$question}
-
-EXPECTED ANSWER:
-{$expected}
-
-USER ANSWER:
-{$user}
-PROMPT;
-    }
-
-    private function buildQuizPrompt(string $noteText, string $difficulty, int $count, string $topicFallback): string
-    {
-        return <<<PROMPT
-Generate a multiple-choice quiz from the note.
-
-Return ONLY valid JSON.
-
-JSON schema:
-{
-  "topic": "string",
-  "difficulty": "easy|medium|hard",
-  "questions": [
-    {
-      "topic": "string",
-      "question": "string",
-      "options": ["string","string","string","string"],
-      "correct_index": 0
-    }
-  ]
-}
-
-Rules:
-- Exactly {$count} questions.
-- Each question must have exactly 4 options.
-- correct_index must be 0,1,2,or 3.
-- No explanations.
-- Keep questions grounded in the note.
-- If topic is missing, use "{$topicFallback}".
-
-Difficulty: {$difficulty}
-Topic fallback: {$topicFallback}
-
-NOTE:
-{$noteText}
-PROMPT;
     }
 
     private function buildQuizPromptStrict(string $noteText, string $difficulty, int $count, string $topicFallback): string

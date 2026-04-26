@@ -14,6 +14,10 @@ use App\Http\Controllers\Api\Admin\AdminNotesController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ExternalQuizController;
 
+
+Route::post('/quiz/generate', [QuizController::class, 'generate']);
+
+Route::post('/quiz/generate', [QuizController::class, 'generate']);
 Route::get('/external-quiz', [ExternalQuizController::class, 'index']);
 Route::post('/askpdf/query', [AiController::class, 'askPdfQuery']);
 /*

@@ -16,7 +16,7 @@ class PerformanceAnalyzerService
 
         $this->api = new OllamaClientService(
             env('OLLAMA_URL', 'http://127.0.0.1:11434'),
-            env('OLLAMA_MODEL', 'qwen3:1.7b'),
+            env('OLLAMA_MODEL', 'phi3:mini'),
             40
         );
 

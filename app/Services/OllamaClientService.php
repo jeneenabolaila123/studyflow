@@ -17,7 +17,7 @@ class OllamaClientService
         int $timeout = 40
     ) {
         $this->ollamaUrl = rtrim($ollamaUrl ?: env('OLLAMA_URL', 'http://127.0.0.1:11434'), '/');
-        $this->model = $model ?: env('OLLAMA_MODEL', 'qwen3:1.7b');
+        $this->model = $model ?: env('OLLAMA_MODEL', 'phi3:mini');
         $this->timeout = $timeout;
     }
 

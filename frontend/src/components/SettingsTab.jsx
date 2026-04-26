@@ -12,8 +12,8 @@ export default function SettingsTab({
   const [statusColor, setStatusColor] = useState("text-gray-600");
 
   const [url, setUrl] = useState("http://127.0.0.1:11434");
-  const [generatorModel, setGeneratorModel] = useState("qwen3:1.7b");
-  const [evaluatorModel, setEvaluatorModel] = useState("qwen3:1.7b");
+  const [generatorModel, setGeneratorModel] = useState("phi3:mini");
+  const [evaluatorModel, setEvaluatorModel] = useState("phi3:mini");
 
   const [mcqEnabled, setMcqEnabled] = useState(true);
   const [tfEnabled, setTfEnabled] = useState(true);
@@ -79,8 +79,8 @@ export default function SettingsTab({
 
   const resetSettings = () => {
     setUrl("http://127.0.0.1:11434");
-    setGeneratorModel("qwen3:1.7b");
-    setEvaluatorModel("qwen3:1.7b");
+    setGeneratorModel("phi3:mini");
+    setEvaluatorModel("phi3:mini");
     setMcqEnabled(true);
     setTfEnabled(true);
     setShortEnabled(true);
@@ -172,7 +172,7 @@ export default function SettingsTab({
               onChange={(e) => setGeneratorModel(e.target.value)}
               className="w-full rounded-xl border border-gray-300 px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
             >
-              <option value="qwen3:1.7b">qwen3:1.7b</option>
+              <option value="phi3:mini"> phi3:mini</option>
               <option value="phi3:mini">phi3:mini</option>
             </select>
           </div>
@@ -186,7 +186,7 @@ export default function SettingsTab({
               onChange={(e) => setEvaluatorModel(e.target.value)}
               className="w-full rounded-xl border border-gray-300 px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
             >
-              <option value="qwen3:1.7b">qwen3:1.7b</option>
+              <option value="phi3:mini">phi3:mini</option>
             </select>
           </div>
 

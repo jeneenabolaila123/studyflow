@@ -93,8 +93,8 @@ else:
 if not NGROK_AUTHTOKEN or NGROK_AUTHTOKEN == "YOUR_NGROK_AUTHTOKEN":
     print("WARNING: NGROK_AUTHTOKEN not configured properly. Set it in .env file.")
 
-# ---- Tuned for qwen3:1.7b ----
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:1.7b")
+
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "phi3:mini")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 VISION_FEATURES_ENABLED = False
 FAST_MODE = True
@@ -286,15 +286,9 @@ def clean_summary_text(text: str, max_words: int = 140) -> str:
     return cleaned
 
 
-# ==============================================================================
-# 5. LLM & PROMPTS (TUNED FOR qwen3:1.7b)
-# ==============================================================================
 
 def get_llm(model_name: str):
-    """
-    LLM instance tuned for smaller local models like qwen3:1.7b.
-    Avoid forcing JSON mode because it often slows or destabilizes small models.
-    """
+
     return OllamaLLM(
         model=model_name,
         temperature=0.1
@@ -314,10 +308,7 @@ def generate_with_llm(prompt: str, model_name: str):
 
 
 def _format_chunks_for_prompt(chunks: List[Document]) -> str:
-    """
-    Format retrieved chunks into a clean prompt context.
-    Simpler than the original structured block to suit qwen3:1.7b.
-    """
+
     context_strings = []
 
     for i, chunk in enumerate(chunks, start=1):
@@ -338,9 +329,7 @@ def _format_chunks_for_prompt(chunks: List[Document]) -> str:
 
 
 def build_advanced_rag_prompt(question: str, context: str) -> str:
-    """
-    Simpler RAG prompt for qwen3:1.7b.
-    """
+    
     return f"""
 You are a helpful AI assistant.
 
@@ -744,10 +733,7 @@ class HierarchicalRAGService:
         top_k: int = 3,
         specific_chunks: Dict[str, List[int]] = None
     ) -> Tuple[str, List[Dict[str, Any]]]:
-        """
-        Simplified query flow for qwen3:1.7b.
-        Avoid strict JSON parsing and return citations directly from retrieved chunks.
-        """
+      
 
         summary_retriever = self.summary_store.as_retriever(
             search_kwargs={
@@ -884,7 +870,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Hierarchical RAG API tuned for qwen3:1.7b",
+    title="Hierarchical RAG API tuned for phi3:mini",
     lifespan=lifespan
 )
 
@@ -1043,9 +1029,7 @@ async def get_chunks(request: Request):
 
 @app.post("/generate")
 async def generate_text(request: Request):
-    """
-    Main RAG endpoint with lighter logic for qwen3:1.7b.
-    """
+   
     if rag_service is None:
         raise HTTPException(status_code=500, detail="RAG Service is not operational.")
 

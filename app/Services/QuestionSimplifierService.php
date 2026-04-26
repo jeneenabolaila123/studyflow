@@ -10,7 +10,7 @@ class QuestionSimplifierService
     {
         $this->api = new OllamaClientService(
             env('OLLAMA_URL', 'http://127.0.0.1:11434'),
-            'qwen3:1.7b',
+            'phi3:mini',
             40
         );
     }

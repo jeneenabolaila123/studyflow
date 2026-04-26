@@ -7,7 +7,7 @@ import re
 app = FastAPI(title="StudyFlow Quiz API")
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
-OLLAMA_MODEL = "qwen3:1.7b"
+OLLAMA_MODEL = "phi3:mini"
 
 
 class QuizGenerateRequest(BaseModel):

@@ -1,9 +1,11 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\AI;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
+use RuntimeException;
 
 class AiQuizGeneratorService
 {
@@ -17,11 +19,11 @@ class AiQuizGeneratorService
         ?string $ollamaUrl = null,
         ?string $modelName = null,
         string $defaultQualityMode = 'fast',
-        string $defaultDifficulty = 'easy',
+        string $defaultDifficulty = 'medium',
         int $defaultQuestionCount = 5
     ) {
-        $this->ollamaUrl = $ollamaUrl ?: env('OLLAMA_URL', 'http://127.0.0.1:11434');
-        $this->modelName = $modelName ?: env('OLLAMA_MODEL', 'qwen3:1.7b');
+        $this->ollamaUrl = $ollamaUrl ?: env('OLLAMA_BASE_URL', 'http://127.0.0.1:11434');
+        $this->modelName = $modelName ?: env('OLLAMA_MODEL', 'phi3:mini');
         $this->defaultQualityMode = $this->normalizeQualityMode($defaultQualityMode);
         $this->defaultDifficulty = $this->normalizeDifficulty($defaultDifficulty);
         $this->defaultQuestionCount = max(1, $defaultQuestionCount);
@@ -51,48 +53,71 @@ class AiQuizGeneratorService
         }
     }
 
+    public function generateFromText(
+        string $text,
+        string $difficulty = 'medium',
+        ?string $title = null,
+        array $existingQuestions = [],
+        int $count = 5
+    ): array {
+        $questions = $this->generateQuestions(
+            text: $text,
+            modelName: null,
+            qualityMode: 'fast',
+            difficulty: $difficulty,
+            questionCount: $count,
+            existingQuestions: $existingQuestions,
+            title: $title
+        );
+
+        return [
+            'difficulty' => $difficulty,
+            'questions' => $questions,
+        ];
+    }
+
     public function generateQuestions(
         string $text,
-        bool $includeMultipleChoice = true,
-        bool $includeTrueFalse = true,
-        bool $includeShortAnswer = true,
         ?string $modelName = null,
         string $qualityMode = 'fast',
         ?string $difficulty = null,
-        ?int $questionCount = null
+        ?int $questionCount = null,
+        array $existingQuestions = [],
+        ?string $title = null
     ): array {
-        if (!$includeMultipleChoice && !$includeTrueFalse && !$includeShortAnswer) {
-            throw new \InvalidArgumentException('No question types selected');
-        }
-
         if (trim($text) === '') {
-            throw new \InvalidArgumentException('Empty text');
+            throw new InvalidArgumentException('Empty text');
         }
 
         $difficulty = $this->normalizeDifficulty($difficulty ?: $this->defaultDifficulty);
         $qualityMode = $this->normalizeQualityMode($qualityMode ?: $this->defaultQualityMode);
-        $questionCount = max(1, (int)($questionCount ?: $this->defaultQuestionCount));
+        $questionCount = max(1, min(5, (int) ($questionCount ?: $this->defaultQuestionCount)));
 
         if ($modelName) {
             $this->setModel($modelName);
         }
 
+        $existingQuestions = array_values(array_filter($existingQuestions, function ($q) {
+            return is_array($q) && ! empty($q['question']);
+        }));
+
         $sourceText = $this->prepareGenerationSource($text, $difficulty);
+        $title = $title ?: 'Uploaded PDF';
 
         $prompt = $this->buildPrompt(
             text: $sourceText,
             questionCount: $questionCount,
             difficulty: $difficulty,
-            qualityMode: $qualityMode
+            qualityMode: $qualityMode,
+            existingQuestions: $existingQuestions,
+            title: $title
         );
 
         $options = $this->qualityProfile($qualityMode, $difficulty, $questionCount);
-
         $responseText = $this->callModel($prompt, $options);
 
         $questions = $this->parseQuestions($responseText);
-
-        $questions = $this->filterUniqueQuestions($questions, $sourceText);
+        $questions = $this->filterAgainstExistingQuestions($questions, $existingQuestions, $questionCount);
 
         if (count($questions) < $questionCount) {
             $fallback = $this->buildFallbackQuestions($sourceText, $questionCount - count($questions), $difficulty);
@@ -102,14 +127,14 @@ class AiQuizGeneratorService
                     break;
                 }
 
-                if (!$this->isDuplicateQuestion($q['question'], $questions)) {
+                if (! $this->isDuplicateQuestion($q['question'], $questions)) {
                     $questions[] = $q;
                 }
             }
         }
 
         if (empty($questions)) {
-            throw new \RuntimeException('No questions generated');
+            throw new RuntimeException('No questions generated');
         }
 
         return array_slice($questions, 0, $questionCount);
@@ -118,50 +143,84 @@ class AiQuizGeneratorService
     protected function buildPrompt(
         string $text,
         int $questionCount,
-        string $difficulty = 'easy',
-        string $qualityMode = 'fast'
+        string $difficulty = 'medium',
+        string $qualityMode = 'fast',
+        array $existingQuestions = [],
+        ?string $title = null
     ): string {
-        $difficultyRules = match ($difficulty) {
-            'medium' => "- Use medium difficulty\n- Ask about meaning, relation, reason, result, or simple inference\n- Avoid very obvious copied facts",
-            'difficult' => "- Use difficult difficulty\n- Prefer inference, comparison, cause, effect, purpose, implication",
-            default => "- Use easy difficulty\n- Keep the questions straightforward\n- Mix direct fact, identification, and basic understanding",
+        $difficultyHint = match ($difficulty) {
+            'easy' => 'Focus on basic understanding, direct concept checks, and core definitions.',
+            'hard' => 'Focus on deeper reasoning, comparison, and slightly stronger distractors.',
+            default => 'Use a balanced level of understanding and simple application.',
         };
 
-        $qualityRules = $qualityMode === 'higher_quality'
-            ? "- Make wording polished and natural\n- Cover different ideas\n- Make distractors believable"
-            : "- Keep wording concise\n- Prefer short questions and short options";
+        $existingList = "None";
+        if (! empty($existingQuestions)) {
+            $lines = [];
+            foreach ($existingQuestions as $index => $question) {
+                if (! empty($question['question'])) {
+                    $lines[] = ($index + 1) . '. ' . trim((string) $question['question']);
+                }
+            }
+            if ($lines !== []) {
+                $existingList = implode("\n", $lines);
+            }
+        }
+
+        $title = $title ?: 'Uploaded PDF';
 
         return <<<PROMPT
 /no_think
 
-Generate exactly {$questionCount} multiple choice questions from the text.
+You are a strict university instructor creating high-quality multiple-choice questions from study material.
 
-Difficulty:
-{$difficultyRules}
-
-Quality:
-{$qualityRules}
+Generate EXACTLY {$questionCount} NEW MCQ questions based ONLY on the source text below.
 
 Rules:
-- Use only information supported by the text
-- Cover different ideas
-- Do not ask "according to the text"
-- Do not copy full sentences from the text
-- Use exactly 4 options
-- Only 1 correct answer
-- No explanation
-- No markdown
-- Output only in this format
+- Use only information clearly supported by the source text.
+- Each question must test a DIFFERENT concept or subtopic.
+- Do NOT repeat the same idea in different wording.
+- Do NOT repeat or rephrase any existing question.
+- Prefer conceptual understanding, application, comparison, and interpretation over direct copying.
+- Do NOT ask "according to the text".
+- Do NOT copy full sentences from the source text.
+- Keep the question stem clear and not too long.
+- Make distractors plausible and meaningful.
+- Each question must have exactly 4 options: A, B, C, D.
+- Each question must have exactly 1 correct answer.
+- Each question must include a short explanation.
+- Return ONLY valid JSON.
+- Do NOT use markdown.
+- Do NOT wrap the JSON in code fences.
+- Do NOT add commentary before or after the JSON.
 
-Format:
-Q: question
-A) option
-B) option
-C) option
-D) option
-Correct: A
+Difficulty guidance:
+{$difficultyHint}
 
-Text:
+Existing questions to avoid:
+{$existingList}
+
+Return EXACTLY this JSON schema:
+{
+  "questions": [
+    {
+      "question": "Question text here",
+      "options": {
+        "A": "Option A",
+        "B": "Option B",
+        "C": "Option C",
+        "D": "Option D"
+      },
+      "correct_answer": "A",
+      "explanation": "Short explanation here"
+    }
+  ]
+}
+
+Source title:
+{$title}
+
+Source text:
 {$text}
 PROMPT;
     }
@@ -173,7 +232,7 @@ PROMPT;
         try {
             $response = Http::timeout(180)
                 ->connectTimeout(10)
-                ->retry(2, 2000)
+                ->retry(1, 1000)
                 ->post($this->ollamaUrl . '/api/generate', [
                     'model' => $this->modelName,
                     'prompt' => $prompt,
@@ -181,12 +240,12 @@ PROMPT;
                     'options' => $options,
                 ]);
 
-            if (!$response->ok()) {
-                throw new \RuntimeException('Ollama request failed: ' . $response->status());
+            if (! $response->ok()) {
+                throw new RuntimeException('Ollama request failed: ' . $response->status() . ' - ' . $response->body());
             }
 
             $body = $response->json();
-            $text = (string)($body['response'] ?? '');
+            $text = (string) ($body['response'] ?? '');
 
             Log::info('[QUIZ_GEN] response', [
                 'model' => $this->modelName,
@@ -195,7 +254,7 @@ PROMPT;
                 'preview' => mb_substr(str_replace("\n", ' ', $text), 0, 250),
             ]);
 
-            return $text;
+            return trim($text);
         } catch (\Throwable $e) {
             Log::error('[QUIZ_GEN] model call failed', [
                 'model' => $this->modelName,
@@ -211,7 +270,7 @@ PROMPT;
         $response = $this->removeThinkBlocks($response);
 
         $jsonQuestions = $this->parseJsonQuestions($response);
-        if (!empty($jsonQuestions)) {
+        if (! empty($jsonQuestions)) {
             return $jsonQuestions;
         }
 
@@ -241,42 +300,43 @@ PROMPT;
 
             $decoded = json_decode($candidate, true);
 
-            if (!is_array($decoded)) {
+            if (! is_array($decoded)) {
                 continue;
             }
 
             $items = $decoded['questions'] ?? (array_is_list($decoded) ? $decoded : []);
 
-            if (!is_array($items)) {
+            if (! is_array($items)) {
                 continue;
             }
 
             $questions = [];
 
             foreach ($items as $item) {
-                if (!is_array($item)) {
+                if (! is_array($item)) {
                     continue;
                 }
 
-                $question = trim((string)($item['question'] ?? ''));
-                $options = $item['options'] ?? [];
-                $correctIndex = $item['correct_index'] ?? $item['correct'] ?? null;
+                $question = trim((string) ($item['question'] ?? ''));
+                $options = $this->normalizeOptions($item['options'] ?? []);
+                $correctAnswer = $this->normalizeCorrectAnswer(
+                    $item['correct_answer'] ?? ($item['correct'] ?? null),
+                    $options ?? []
+                );
+                $explanation = trim((string) ($item['explanation'] ?? ''));
 
-                if (is_array($options) && count($options) === 4 && $question !== '') {
-                    $correctIndex = $this->coerceCorrectIndex($correctIndex);
-
-                    if ($correctIndex !== null && $correctIndex >= 0 && $correctIndex <= 3) {
-                        $questions[] = [
-                            'question' => $question,
-                            'options' => array_values(array_map(fn($o) => trim((string)$o), $options)),
-                            'correct_index' => $correctIndex,
-                            'type' => 'multiple_choice',
-                        ];
-                    }
+                if ($question !== '' && $options !== null && $correctAnswer !== null && $explanation !== '') {
+                    $questions[] = [
+                        'question' => $question,
+                        'options' => $options,
+                        'correct_answer' => $correctAnswer,
+                        'explanation' => $explanation,
+                        'type' => 'multiple_choice',
+                    ];
                 }
             }
 
-            if (!empty($questions)) {
+            if (! empty($questions)) {
                 return $questions;
             }
         }
@@ -293,7 +353,7 @@ PROMPT;
             return [];
         }
 
-        $blocks = preg_split('/\n(?=(?:Q:|Question:|\d+[\).]))/i', $response) ?: [];
+        $blocks = preg_split('/\n(?=(?:Q\d+\s*:|Q:|Question:|\d+[\).]))/i', $response) ?: [];
         $questions = [];
 
         foreach ($blocks as $block) {
@@ -316,30 +376,43 @@ PROMPT;
         $lines = array_values(array_filter(array_map('trim', explode("\n", $block))));
         $questionText = null;
         $options = [];
-        $correctIndex = null;
+        $correctAnswer = null;
+        $explanation = null;
 
         foreach ($lines as $line) {
-            if (preg_match('/^(Q:|Question:|\d+[\).]\s*)/i', $line)) {
-                $questionText = trim(preg_replace('/^(Q:|Question:|\d+[\).]\s*)/i', '', $line));
+            if (preg_match('/^(Q\d+\s*:|Q:|Question:|\d+[\).]\s*)/i', $line)) {
+                $questionText = trim(preg_replace('/^(Q\d+\s*:|Q:|Question:|\d+[\).]\s*)/i', '', $line));
             } elseif (preg_match('/^[A-D][\)\.\:]\s*/', $line)) {
-                $options[] = trim(preg_replace('/^[A-D][\)\.\:]\s*/', '', $line));
+                $label = strtoupper($line[0]);
+                $options[$label] = trim(preg_replace('/^[A-D][\)\.\:]\s*/', '', $line));
             } elseif (preg_match('/^Correct(\s+Answer)?:/i', $line)) {
                 $value = strtoupper(trim(explode(':', $line, 2)[1] ?? ''));
                 $value = str_replace([')', '.', ':'], '', $value);
 
                 if (in_array($value, ['A', 'B', 'C', 'D'], true)) {
-                    $correctIndex = ord($value) - ord('A');
+                    $correctAnswer = $value;
                 } elseif (in_array($value, ['1', '2', '3', '4'], true)) {
-                    $correctIndex = ((int)$value) - 1;
+                    $correctAnswer = ['1' => 'A', '2' => 'B', '3' => 'C', '4' => 'D'][$value];
                 }
+            } elseif (preg_match('/^Explanation:/i', $line)) {
+                $explanation = trim(explode(':', $line, 2)[1] ?? '');
             }
         }
 
-        if ($questionText && count($options) === 4 && $correctIndex !== null) {
+        if (
+            $questionText &&
+            count($options) === 4 &&
+            $correctAnswer !== null &&
+            $explanation !== null &&
+            $explanation !== ''
+        ) {
+            ksort($options);
+
             return [
                 'question' => $questionText,
                 'options' => $options,
-                'correct_index' => $correctIndex,
+                'correct_answer' => $correctAnswer,
+                'explanation' => $explanation,
                 'type' => 'multiple_choice',
             ];
         }
@@ -347,39 +420,16 @@ PROMPT;
         return null;
     }
 
-    protected function coerceCorrectIndex(mixed $value): ?int
-    {
-        if (is_int($value)) {
-            return ($value >= 0 && $value <= 3) ? $value : null;
-        }
-
-        if ($value === null) {
-            return null;
-        }
-
-        $value = strtoupper(trim((string)$value));
-
-        if (in_array($value, ['A', 'B', 'C', 'D'], true)) {
-            return ord($value) - ord('A');
-        }
-
-        if (in_array($value, ['0', '1', '2', '3'], true)) {
-            return (int)$value;
-        }
-
-        if (in_array($value, ['1', '2', '3', '4'], true)) {
-            return ((int)$value) - 1;
-        }
-
-        return null;
-    }
-
-    protected function filterUniqueQuestions(array $questions, string $sourceText = ''): array
+    protected function filterAgainstExistingQuestions(array $questions, array $existingQuestions, int $limit): array
     {
         $unique = [];
 
         foreach ($questions as $q) {
-            if (!$this->isValidQuestion($q, $sourceText)) {
+            if (! $this->isValidQuestion($q)) {
+                continue;
+            }
+
+            if ($this->isDuplicateQuestion($q['question'], $existingQuestions)) {
                 continue;
             }
 
@@ -388,39 +438,39 @@ PROMPT;
             }
 
             $unique[] = $q;
+
+            if (count($unique) >= $limit) {
+                break;
+            }
         }
 
         return $unique;
     }
 
-    protected function isValidQuestion(array $question, string $sourceText = ''): bool
+    protected function isValidQuestion(array $question): bool
     {
-        $questionText = trim((string)($question['question'] ?? ''));
+        $questionText = trim((string) ($question['question'] ?? ''));
         $options = $question['options'] ?? [];
-        $correctIndex = $question['correct_index'] ?? null;
+        $correctAnswer = $question['correct_answer'] ?? null;
+        $explanation = trim((string) ($question['explanation'] ?? ''));
 
         if ($questionText === '' || mb_strlen($questionText) < 8) {
             return false;
         }
 
-        if (!is_array($options) || count($options) !== 4) {
+        if (! is_array($options) || count($options) !== 4) {
             return false;
         }
 
-        if (!is_int($correctIndex) || $correctIndex < 0 || $correctIndex > 3) {
+        if (! is_string($correctAnswer) || ! in_array($correctAnswer, ['A', 'B', 'C', 'D'], true)) {
             return false;
         }
 
-        $normalizedOptions = [];
-        foreach ($options as $option) {
-            $clean = $this->normalizeText((string)$option);
-            if ($clean === '') {
-                return false;
-            }
-            $normalizedOptions[] = $clean;
+        if ($explanation === '') {
+            return false;
         }
 
-        if (count(array_unique($normalizedOptions)) < 4) {
+        if ($this->hasDuplicateOptions($options)) {
             return false;
         }
 
@@ -499,25 +549,26 @@ PROMPT;
 
             $stem = match ($difficulty) {
                 'medium' => 'Which concept best matches the material?',
-                'difficult' => 'Which conclusion is best supported by the material?',
+                'hard' => 'Which conclusion is best supported by the material?',
                 default => 'Which topic appears in the material?',
             };
 
             $options = [$topic, $distractors[0], $distractors[1], $distractors[2]];
-            $correctIndex = $index % 4;
+            shuffle($options);
 
-            if ($correctIndex === 1) {
-                $options = [$distractors[0], $topic, $distractors[1], $distractors[2]];
-            } elseif ($correctIndex === 2) {
-                $options = [$distractors[0], $distractors[1], $topic, $distractors[2]];
-            } elseif ($correctIndex === 3) {
-                $options = [$distractors[0], $distractors[1], $distractors[2], $topic];
-            }
+            $correctAnswer = array_search($topic, $options, true);
+            $labelMap = ['A', 'B', 'C', 'D'];
 
             $questions[] = [
                 'question' => $stem,
-                'options' => $options,
-                'correct_index' => $correctIndex,
+                'options' => [
+                    'A' => $options[0],
+                    'B' => $options[1],
+                    'C' => $options[2],
+                    'D' => $options[3],
+                ],
+                'correct_answer' => $labelMap[$correctAnswer],
+                'explanation' => 'This fallback question was generated from an important topic in the uploaded material.',
                 'type' => 'multiple_choice',
             ];
         }
@@ -527,7 +578,7 @@ PROMPT;
 
     protected function extractEmergencyTopics(string $text, int $maxItems = 30): array
     {
-        $text = $this->cleanText($text, 120000);
+        $text = $this->cleanText($text, 5000);
 
         preg_match_all('/\b[A-Za-z][A-Za-z0-9\-]{2,}(?:\s+[A-Za-z][A-Za-z0-9\-]{2,}){0,4}\b/', $text, $matches);
 
@@ -548,14 +599,14 @@ PROMPT;
         $distractors = [];
 
         foreach ($pool as $item) {
-            $item = trim((string)$item);
+            $item = trim((string) $item);
             $norm = $this->normalizeText($item);
 
             if ($norm === '' || $norm === $correctNorm) {
                 continue;
             }
 
-            if (!in_array($item, $distractors, true)) {
+            if (! in_array($item, $distractors, true)) {
                 $distractors[] = $item;
             }
 
@@ -582,7 +633,7 @@ PROMPT;
             }
 
             $norm = $this->normalizeText($item);
-            if ($norm !== $correctNorm && !in_array($item, $distractors, true)) {
+            if ($norm !== $correctNorm && ! in_array($item, $distractors, true)) {
                 $distractors[] = $item;
             }
         }
@@ -592,12 +643,12 @@ PROMPT;
 
     protected function prepareGenerationSource(string $text, string $difficulty): string
     {
-        $clean = $this->cleanText($text, 120000);
+        $clean = $this->cleanText($text, 8000);
 
         return match ($difficulty) {
-            'difficult' => $this->cleanText($clean, 1250),
-            'medium' => $this->cleanText($clean, 760),
-            default => $this->cleanText($clean, 900),
+            'hard' => $this->cleanText($clean, 2200),
+            'medium' => $this->cleanText($clean, 1800),
+            default => $this->cleanText($clean, 1500),
         };
     }
 
@@ -605,37 +656,93 @@ PROMPT;
     {
         if ($qualityMode === 'higher_quality') {
             return [
-                'temperature' => 0.68,
+                'temperature' => 0.45,
                 'top_k' => 20,
-                'top_p' => 0.80,
-                'repeat_penalty' => 1.10,
-                'num_predict' => min(340, 36 + (52 * max(1, $questionCount))),
-                'num_ctx' => $difficulty === 'difficult' ? 1152 : 896,
+                'top_p' => 0.85,
+                'repeat_penalty' => 1.12,
+                'num_predict' => min(650, 120 + (70 * max(1, $questionCount))),
+                'num_ctx' => 2048,
             ];
         }
 
         if ($difficulty === 'medium') {
             return [
-                'temperature' => 0.28,
-                'top_k' => 8,
-                'top_p' => 0.55,
-                'repeat_penalty' => 1.12,
-                'num_predict' => min(140, 22 + (30 * max(1, $questionCount))),
-                'num_ctx' => 512,
+                'temperature' => 0.25,
+                'top_k' => 12,
+                'top_p' => 0.75,
+                'repeat_penalty' => 1.08,
+                'num_predict' => min(520, 100 + (60 * max(1, $questionCount))),
+                'num_ctx' => 1536,
             ];
         }
 
         return [
             'temperature' => 0.18,
-            'top_k' => 14,
-            'top_p' => 0.74,
-            'repeat_penalty' => 1.04,
-            'num_predict' => min(220, 22 + (32 * max(1, $questionCount))),
-            'num_ctx' => $difficulty === 'difficult' ? 448 : 320,
+            'top_k' => 10,
+            'top_p' => 0.72,
+            'repeat_penalty' => 1.06,
+            'num_predict' => min(480, 90 + (55 * max(1, $questionCount))),
+            'num_ctx' => 1280,
         ];
     }
 
-    protected function cleanText(string $text, int $limit = 1400): string
+    protected function normalizeOptions(mixed $options): ?array
+    {
+        if (! is_array($options)) {
+            return null;
+        }
+
+        if (array_is_list($options) && count($options) === 4) {
+            return [
+                'A' => trim((string) $options[0]),
+                'B' => trim((string) $options[1]),
+                'C' => trim((string) $options[2]),
+                'D' => trim((string) $options[3]),
+            ];
+        }
+
+        $normalized = [
+            'A' => trim((string) ($options['A'] ?? $options['a'] ?? '')),
+            'B' => trim((string) ($options['B'] ?? $options['b'] ?? '')),
+            'C' => trim((string) ($options['C'] ?? $options['c'] ?? '')),
+            'D' => trim((string) ($options['D'] ?? $options['d'] ?? '')),
+        ];
+
+        return in_array('', $normalized, true) ? null : $normalized;
+    }
+
+    protected function normalizeCorrectAnswer(mixed $correctAnswer, array $options): ?string
+    {
+        $correctAnswer = strtoupper(trim((string) $correctAnswer));
+
+        if (in_array($correctAnswer, ['A', 'B', 'C', 'D'], true)) {
+            return $correctAnswer;
+        }
+
+        if (in_array($correctAnswer, ['1', '2', '3', '4'], true)) {
+            return ['1' => 'A', '2' => 'B', '3' => 'C', '4' => 'D'][$correctAnswer];
+        }
+
+        foreach ($options as $key => $value) {
+            if (mb_strtolower(trim((string) $value)) === mb_strtolower(trim((string) $correctAnswer))) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    protected function hasDuplicateOptions(array $options): bool
+    {
+        $normalized = array_map(
+            fn($value) => mb_strtolower(trim((string) $value)),
+            $options
+        );
+
+        return count($normalized) !== count(array_unique($normalized));
+    }
+
+    protected function cleanText(string $text, int $limit = 1800): string
     {
         $text = preg_replace('/<[^>]+>/', ' ', $text) ?? $text;
         $text = preg_replace('/\s+/', ' ', $text) ?? $text;
@@ -646,7 +753,7 @@ PROMPT;
 
     protected function removeThinkBlocks(string $text): string
     {
-        return trim((string)preg_replace('/<think>.*?<\/think>/is', '', $text));
+        return trim((string) preg_replace('/<think>.*?<\/think>/is', '', $text));
     }
 
     protected function normalizeText(string $text): string
@@ -663,7 +770,7 @@ PROMPT;
         $seen = [];
 
         foreach ($items as $item) {
-            $item = trim((string)$item);
+            $item = trim((string) $item);
             $key = $this->normalizeText($item);
 
             if ($key === '' || isset($seen[$key])) {
@@ -675,5 +782,23 @@ PROMPT;
         }
 
         return $result;
+    }
+
+    protected function normalizeDifficulty(string $difficulty): string
+    {
+        $difficulty = strtolower(trim($difficulty));
+
+        return match ($difficulty) {
+            'easy', 'medium', 'hard' => $difficulty,
+            'difficult' => 'hard',
+            default => 'medium',
+        };
+    }
+
+    protected function normalizeQualityMode(string $qualityMode): string
+    {
+        $qualityMode = strtolower(trim($qualityMode));
+
+        return $qualityMode === 'higher_quality' ? 'higher_quality' : 'fast';
     }
 }

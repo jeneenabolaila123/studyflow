@@ -85,7 +85,9 @@ async def summarize_pdf(file: UploadFile = File(...)):
             }
 
     except Exception as e:
+        import traceback
         print(f"Error during summarization: {e}")
+        print(traceback.format_exc())
         return {
             "success": False,
             "summary": "An error occurred during summarization."

@@ -15,7 +15,7 @@ class FlashcardAIService
         ?string $modelName = null
     ) {
         $this->ollamaUrl = $ollamaUrl ?: env('OLLAMA_URL', 'http://127.0.0.1:11434');
-        $this->modelName = $modelName ?: env('OLLAMA_MODEL', 'qwen3:1.7b');
+        $this->modelName = $modelName ?: env('OLLAMA_MODEL', 'phi3:mini');
     }
 
     public function explainAnswer(string $question, string $answer): string

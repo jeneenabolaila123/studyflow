@@ -52,7 +52,7 @@ PROMPT;
 
         try {
 
-            $response = Http::timeout(120)->post($this->endpoint, [
+            $response = Http::timeout(240)->post($this->endpoint, [
                 'prompt' => $prompt
             ]);
 

@@ -22,15 +22,10 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-
-    'ollama' => [
-        'base_url' => env('OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
-        'model' => env('OLLAMA_MODEL', 'qwen3:1.7b'),
-        'timeout' => (int) env('OLLAMA_TIMEOUT', 120),
-        'connect_timeout' => (int) env('OLLAMA_CONNECT_TIMEOUT', 10),
-        'min_chunk_tokens' => (int) env('OLLAMA_MIN_CHUNK_TOKENS', 2000),
-        'max_chunk_tokens' => (int) env('OLLAMA_MAX_CHUNK_TOKENS', 3000),
-        'chunk_chars_per_token' => (int) env('OLLAMA_CHUNK_CHARS_PER_TOKEN', 4),
+    'quiz_api' => [
+        'url' => env('QUIZ_API_URL'),
+        'key' => env('QUIZ_API_KEY'),
+        'model' => env('QUIZ_API_MODEL'),
+        'timeout' => (int) env('QUIZ_API_TIMEOUT', 120),
     ],
-
 ];

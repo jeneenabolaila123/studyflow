@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 app = FastAPI(title="StudyFlow Hybrid Summary API")
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
-DEFAULT_MODEL = "qwen3:1.7b"
+DEFAULT_MODEL = "phi3:mini"
 
 REQUEST_TIMEOUT = 35.0
 MODEL_HARD_DEADLINE = 18.0

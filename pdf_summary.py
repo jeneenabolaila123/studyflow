@@ -216,10 +216,10 @@ Document:
 {text[:4000]}
 """
 
-    response = requests.post(
+     response = requests.post(
         "http://127.0.0.1:11434/api/generate",
         json={
-            "model": "qwen3:1.7b",
+            "model": "phi3:mini",
             "prompt": prompt,
             "stream": False
         },

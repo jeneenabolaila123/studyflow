@@ -16,7 +16,7 @@ class AIAnswerEvaluatorService
         ?string $modelName = null
     ) {
         $this->ollamaUrl = $ollamaUrl ?: env('OLLAMA_URL', 'http://127.0.0.1:11434');
-        $this->modelName = $modelName ?: env('OLLAMA_MODEL', 'qwen3:1.7b');
+        $this->modelName = $modelName ?: env('OLLAMA_MODEL', 'phi3:mini');
         $this->hintModelName = $this->modelName;
     }
 
@@ -167,11 +167,11 @@ PROMPT;
 
     protected function generateText(string $model, string $prompt): string
     {
-        $response = Http::timeout(120)
+        $response = Http::timeout(240)
             ->connectTimeout(10)
             ->retry(2, 1500)
             ->post($this->ollamaUrl . '/api/generate', [
-                'model' => $model,
+                "model" => "phi3:mini",
                 'prompt' => $prompt,
                 'stream' => false,
                 'options' => [
