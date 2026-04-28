@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import requests
 import time
 import os
+from bs4 import BeautifulSoup
 
 app = FastAPI(title="StudyFlow Fast Summary API")
 
@@ -101,6 +102,25 @@ SUMMARY:
     return summary
 
 
+def fetch_url_content(url: str) -> str:
+    try:
+        response = requests.get(url, timeout=15, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        })
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, "html.parser")
+        
+        # Remove unwanted elements
+        for script_or_style in soup(["script", "style", "nav", "footer", "header", "aside"]):
+            script_or_style.decompose()
+            
+        text = soup.get_text(separator="\n")
+        return clean_text(text)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {str(e)}")
+
+
 @app.post("/summarize")
 async def summarize(request: Request):
     start_time = time.time()
@@ -113,12 +133,17 @@ async def summarize(request: Request):
     # Case 1: JSON request from test or Laravel text note
     if "application/json" in content_type:
         data = await request.json()
-        text = (
-            data.get("text")
-            or data.get("human_input")
-            or data.get("content")
-            or ""
-        )
+        
+        url = data.get("url")
+        if url:
+            text = fetch_url_content(url)
+        else:
+            text = (
+                data.get("text")
+                or data.get("human_input")
+                or data.get("content")
+                or ""
+            )
 
     # Case 2: File upload from Laravel PDF note
     elif "multipart/form-data" in content_type:
@@ -147,6 +172,14 @@ async def summarize(request: Request):
 
     text = clean_text(text)
     summary = summarize_with_ollama(text)
+
+    duration = time.time() - start_time
+
+    return {
+        "summary": summary,
+        "processing_time_seconds": round(duration, 2),
+        "processing_time_minutes": round(duration / 60, 2),
+    }
 
     processing_time = round(time.time() - start_time, 2)
 

@@ -41,6 +41,7 @@ Route::post('/askpdf/query', [AiController::class, 'askPdfQuery']);
 */
 Route::post('/ai/reset', [AiController::class, 'reset']);
 Route::post('/ai/summarize', [AiController::class, 'summarize'])->middleware('auth:sanctum');
+Route::post('/ai/link-summary', [AiController::class, 'linkSummary'])->middleware('auth:sanctum');
 
 /*
 |--------------------------------------------------------------------------

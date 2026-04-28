@@ -501,6 +501,46 @@ class AiController extends Controller
         }
     }
 
+    public function linkSummary(Request $request)
+    {
+        $validated = $request->validate([
+            'url' => ['required', 'url'],
+        ]);
+
+        try {
+            $pythonUrl = env('SUMMARY_API_URL', 'http://127.0.0.1:8002/summarize');
+
+            $response = Http::connectTimeout(10)
+                ->timeout(180)
+                ->post($pythonUrl, [
+                    'url' => $validated['url']
+                ]);
+
+            if (!$response->successful()) {
+                Log::error('Python Link Summary API failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Link summary service failed.',
+                ], 502);
+            }
+
+            return response()->json($response->json());
+        } catch (\Throwable $e) {
+            Log::error('Link Summary failed', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate link summary: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
     private function extractRelevantContext(string $query, string $fullText): string
     {

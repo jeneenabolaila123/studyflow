@@ -58,6 +58,25 @@ function AskAiIcon() {
     );
 }
 
+function LinkIcon() {
+    return (
+        <svg
+            width="28"
+            height="28"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="1.8"
+        >
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            />
+        </svg>
+    );
+}
+
 function ArrowRightIcon() {
     return (
         <svg
@@ -146,6 +165,18 @@ export default function AiToolsPage() {
             color: "#8b5cf6",
             onClick: () => navigate("/notes"),
             delay: 160,
+        },
+        {
+            icon: <LinkIcon />,
+            title: "Link Summary",
+            description:
+                "Paste an article or webpage URL to instantly generate a concise summary and key takeaways.",
+            buttonLabel: "Summarize Link",
+            gradient: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)",
+            iconBg: "rgba(249,115,22,0.15)",
+            color: "#f97316",
+            onClick: () => navigate("/link-summary"),
+            delay: 240,
         },
     ];
 

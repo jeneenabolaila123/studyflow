@@ -25,6 +25,7 @@ import DocumentFrame from "./pages/DocumentFrame.jsx";
 import RevisionTab from "./pages/RevisionTab.jsx";
 import SettingsTab from "./components/SettingsTab.jsx";
 import QuizPage from "./pages/QuizPage.jsx";
+import LinkSummaryPage from "./pages/LinkSummaryPage.jsx";
 
 import { useAuth } from "./auth/AuthContext.jsx";
 import { Navigate, Route, Routes } from "react-router-dom"; 
@@ -74,6 +75,7 @@ function App() {
                     <Route path="/feedback" element={<FeedbackPage />} />
                     <Route path="/quiz" element={<QuizPage />} />
                     <Route path="/quiz/:id" element={<QuizPage />} />
+                    <Route path="/link-summary" element={<LinkSummaryPage />} />
                 </Route>
             </Route>
 
