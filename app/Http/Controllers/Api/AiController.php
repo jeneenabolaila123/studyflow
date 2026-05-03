@@ -17,7 +17,7 @@ class AiController extends Controller
     {
         $validated = $request->validate([
             'question' => ['required', 'string', 'min:1', 'max:2000'],
-            'pdf_id' => ['required', 'string'],
+            'pdf_id' => ['nullable', 'string'],
             'session_id' => ['nullable', 'string'],
         ]);
 
@@ -27,8 +27,11 @@ class AiController extends Controller
             $payload = [
                 'question' => $validated['question'],
                 'model' => 'phi3:mini',
-                'pdf_ids' => [$validated['pdf_id']],
             ];
+
+            if (!empty($validated['pdf_id'])) {
+                $payload['pdf_ids'] = [$validated['pdf_id']];
+            }
 
             if ($sessionId !== '') {
                 $payload['session_id'] = $sessionId;
@@ -68,13 +71,48 @@ class AiController extends Controller
             ], 500);
         }
     }
-
+    public function getChatSessions($id)
+    {
+        return response()->json([
+            'sessions' => []
+        ]);
+    }
+    public function createChatSession($id)
+    {
+        return response()->json([
+            'session' => [
+                'id' => 1
+            ]
+        ]);
+    }
+    public function deleteChatSession($sessionId)
+    {
+        return response()->json([
+            'success' => true
+        ]);
+    }
     public function reset()
     {
         return response()->json([
             'success' => true,
             'message' => 'Reset done',
         ]);
+    }
+
+    public function chat(Request $request, $id = null)
+    {
+        $validated = $request->validate([
+            'message' => 'required|string',
+            'note_id' => 'nullable|integer',
+        ]);
+
+        // Map 'message' to 'question' for askPdfQuery
+        $request->merge([
+            'question' => $validated['message'],
+            'session_id' => $id
+        ]);
+
+        return $this->askPdfQuery($request);
     }
 
     public function testOllama()
@@ -363,144 +401,91 @@ class AiController extends Controller
     }
     public function summarize(Request $request)
     {
-        @set_time_limit(600);
-        ini_set('max_execution_time', '600');
-        ini_set('default_socket_timeout', '600');
-
         $validated = $request->validate([
-            'note_id' => ['required', 'integer', 'min:1'],
+            'text' => 'nullable|string',
+            'human_input' => 'nullable|string',
+            'note_id' => 'nullable|integer',
         ]);
-        $noteId = (int) $validated['note_id'];
+
+        $text = $validated['text']
+            ?? $validated['human_input']
+            ?? '';
+
+        if (trim($text) === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'No text provided for summary.',
+            ], 422);
+        }
 
         try {
-            $note = Note::query()
-                ->where('user_id', $request->user()->id)
-                ->whereKey($noteId)
-                ->first();
+            $response = Http::timeout(300)->post('http://127.0.0.1:8002/conversation', [
+                'human_input' => $text,
+            ]);
 
-            if (! $note) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Note not found.',
-                ], 404);
-            }
-
-            $storedPath = (string) ($note->stored_path ?? '');
-
-            if ($storedPath === '' && isset($note->file_path)) {
-                $storedPath = (string) ($note->file_path ?? '');
-            }
-
-            if ($storedPath === '') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This note does not have a file attached.',
-                ], 422);
-            }
-
-            $filename = (string) ($note->original_filename ?: basename($storedPath));
-            $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-            $mimeType = (string) ($note->mime_type ?? '');
-
-            if ($extension !== 'pdf' && ! str_contains(strtolower($mimeType), 'pdf')) {
-                return response()->json([
-                    'success' => false,
-                    'filename' => $filename,
-                    'message' => 'Only PDF files can be summarized.',
-                ], 422);
-            }
-
-            $disk = Storage::disk('private');
-
-            if (! $disk->exists($storedPath)) {
-                return response()->json([
-                    'success' => false,
-                    'filename' => $filename,
-                    'message' => 'File not found on server.',
-                ], 404);
-            }
-
-            $fullPath = $disk->path($storedPath);
-
-            $pythonUrl = env('SUMMARY_API_URL', 'http://127.0.0.1:8002/summarize');
-
-            // Determine if we send file or text
-            $response = null;
-            if ($note->source_type === 'text' || !empty($note->text_content)) {
-                $response = Http::connectTimeout(10)
-                    ->timeout(600)
-                    ->post($pythonUrl, [
-                        'text' => $note->text_content ?: $note->description ?: ''
-                    ]);
-            } else {
-                $response = Http::connectTimeout(10)
-                    ->timeout(600)
-                    ->attach('file', file_get_contents($fullPath), $filename)
-                    ->post($pythonUrl);
-            }
+            $rawBody = $response->body();
+            $data = $response->json();
 
             if (!$response->successful()) {
-                Log::error('Python summary API failed', [
+                Log::error('Summary service failed', [
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'raw_body' => $rawBody,
+                    'json' => $data,
                 ]);
 
                 return response()->json([
                     'success' => false,
-                    'filename' => $filename,
-                    'message' => 'Python summary service failed.',
-                ], 502);
+                    'message' => 'Summary service failed.',
+                    'status' => $response->status(),
+                    'raw_response' => $rawBody,
+                    'python_json' => $data,
+                ], 500);
             }
 
-            $summary = trim((string) $response->json('summary', ''));
+            // Original OllamaSummarizer returns "output"
+            $summary = $data['output']
+                ?? $data['summary']
+                ?? $data['response']
+                ?? $data['result']
+                ?? null;
 
-            if ($summary === '') {
-                Log::warning('Python summary API returned empty summary', [
-                    'note_id' => $noteId,
-                    'body' => $response->json(),
+            if (!$summary || trim($summary) === '') {
+                Log::error('Summary service returned empty result', [
+                    'raw_body' => $rawBody,
+                    'json' => $data,
                 ]);
 
                 return response()->json([
                     'success' => false,
-                    'filename' => $filename,
                     'message' => 'Summary service returned an empty result.',
-                ], 502);
+                    'raw_response' => $rawBody,
+                    'python_json' => $data,
+                ], 500);
             }
-
-            $title = trim((string) ($note->title ?: pathinfo($filename, PATHINFO_FILENAME)));
-
-            if ($title === '') {
-                $title = 'Summary for Note #' . $note->id;
-            }
-
-            $saved = Summary::create([
-                'user_id' => $request->user()->id,
-                'note_id' => $note->id,
-                'title' => $title,
-                'source_type' => 'pdf',
-                'summary_text' => $summary,
-            ]);
 
             return response()->json([
                 'success' => true,
-                'summary' => $summary,
-                'filename' => $filename,
                 'message' => 'Summary generated successfully.',
-                'summary_id' => $saved->id,
+                'summary' => $summary,
+                'output' => $summary,
+                'data' => [
+                    'summary' => $summary,
+                    'output' => $summary,
+                    'processing_time_seconds' => $data['processing_time_seconds'] ?? null,
+                    'processing_time_minutes' => $data['processing_time_minutes'] ?? null,
+                ],
             ]);
         } catch (\Throwable $e) {
-            Log::error('Summarize error', [
-                'message' => $e->getMessage(),
+            Log::error('Summary exception', [
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Summary failed.',
-                'error' => $e->getMessage(),
+                'message' => 'Summary error: ' . $e->getMessage(),
             ], 500);
         }
     }
-
     public function linkSummary(Request $request)
     {
         $validated = $request->validate([
@@ -508,7 +493,7 @@ class AiController extends Controller
         ]);
 
         try {
-            $pythonUrl = env('SUMMARY_API_URL', 'http://127.0.0.1:8002/summarize');
+            $pythonUrl = env('SUMMARY_API_URL', 'http://127.0.0.1:8002/conversation');
 
             $response = Http::connectTimeout(10)
                 ->timeout(180)
@@ -686,7 +671,8 @@ class AiController extends Controller
         $connectTimeout = max(1, min($this->ollamaConnectTimeout(), 30));
 
         if (function_exists('set_time_limit')) {
-            @set_time_limit($timeout + 10);
+            set_time_limit(600);
+            ini_set('max_execution_time', '600');
         }
 
         $response = Http::connectTimeout($connectTimeout)
@@ -761,7 +747,7 @@ class AiController extends Controller
     private function handleChatSummary(Request $request, Note $note, string $userMessage)
     {
         try {
-            $pythonUrl = env('SUMMARY_API_URL', 'http://127.0.0.1:8002/summarize');
+            $pythonUrl = env('SUMMARY_API_URL', 'http://127.0.0.1:8002/conversation');
             $response = null;
 
             if ($note->source_type === 'text' || !empty($note->text_content)) {
@@ -783,7 +769,7 @@ class AiController extends Controller
             }
 
             if ($response && $response->successful()) {
-                $summaryText = trim((string) $response->json('summary', ''));
+                $summaryText = trim((string) $response->json('output', ''));
 
                 if ($summaryText !== '') {
                     $saved = Summary::create([
