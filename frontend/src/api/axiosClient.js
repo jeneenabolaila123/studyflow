@@ -1,10 +1,11 @@
 import axios from "axios";
 
+const API_BASE_URL =
+    import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+
 const axiosClient = axios.create({
-    baseURL: import.meta.env.VITE_API_URL,
-
+    baseURL: API_BASE_URL,
     withCredentials: true,
-
     headers: {
         Accept: "application/json",
     },
@@ -16,7 +17,6 @@ axiosClient.interceptors.request.use((config) => {
     const isFormData =
         typeof FormData !== "undefined" && config.data instanceof FormData;
 
-    // Let the browser/Axios set the correct multipart boundary for FormData.
     if (isFormData) {
         if (config.headers?.delete) {
             config.headers.delete("Content-Type");
@@ -26,8 +26,10 @@ axiosClient.interceptors.request.use((config) => {
             delete config.headers?.["content-type"];
         }
     } else {
-        // Keep JSON requests working when callers send plain objects.
-        if (!config.headers?.["Content-Type"] && !config.headers?.["content-type"]) {
+        if (
+            !config.headers?.["Content-Type"] &&
+            !config.headers?.["content-type"]
+        ) {
             config.headers = config.headers || {};
             config.headers["Content-Type"] = "application/json";
         }
@@ -55,26 +57,22 @@ axiosClient.interceptors.response.use(
         if (status === 401) {
             const token = localStorage.getItem("token");
 
-            // If there is no token, treat it as logged out.
             if (!token) {
                 window.dispatchEvent(new Event("auth:logout"));
                 return Promise.reject(error);
             }
 
-            // If /auth/me itself fails with 401, token is invalid -> logout.
             if (url.includes("/auth/me")) {
                 localStorage.removeItem("token");
                 window.dispatchEvent(new Event("auth:logout"));
                 return Promise.reject(error);
             }
 
-            // Avoid infinite loops.
             if (!error?.config?._authProbeAttempted) {
                 try {
                     error.config._authProbeAttempted = true;
 
-                    // Probe auth status using a raw axios call (no interceptors).
-                    await axios.get(`${import.meta.env.VITE_API_URL}/auth/me`, {
+                    await axios.get(`${API_BASE_URL}/auth/me`, {
                         headers: {
                             Accept: "application/json",
                             Authorization: `Bearer ${token}`,
@@ -82,14 +80,15 @@ axiosClient.interceptors.response.use(
                         withCredentials: true,
                     });
 
-                    // Token is still valid; do NOT force logout.
                     return Promise.reject(error);
                 } catch (probeErr) {
                     const probeStatus = probeErr?.response?.status;
+
                     if (probeStatus === 401) {
                         localStorage.removeItem("token");
                         window.dispatchEvent(new Event("auth:logout"));
                     }
+
                     return Promise.reject(error);
                 }
             }

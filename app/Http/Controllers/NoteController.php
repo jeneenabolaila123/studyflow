@@ -23,58 +23,66 @@ class NoteController extends Controller
 
     // POST /api/notes  (Upload PDF)
     public function store(Request $request)
-{
-    $request->validate([
-        'title' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'file' => 'nullable|file|mimes:pdf,txt,ppt,pptx',
-        'text_content' => 'nullable|string'
-    ]);
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'file' => 'nullable|file|mimes:pdf,txt,ppt,pptx',
+            'text_content' => 'nullable|string'
+        ]);
 
-    $originalFilename = null;
-    $storedPath = null;
-    $mimeType = null;
-    $fileSize = null;
+        $originalFilename = null;
+        $storedPath = null;
+        $mimeType = null;
+        $fileSize = null;
 
-    if ($request->hasFile('file')) {
-        $file = $request->file('file');
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
 
-        $originalFilename = $file->getClientOriginalName();
-        $storedPath = $file->store('notes', 'public');
-        $mimeType = $file->getMimeType();
-        $fileSize = $file->getSize();
+            $originalFilename = $file->getClientOriginalName();
+            $storedPath = $file->store('notes', 'public');
+            $mimeType = $file->getMimeType();
+            $fileSize = $file->getSize();
+        }
+
+        $note = \App\Models\Note::create([
+            'user_id' => $request->user()->id,
+            'title' => $request->title,
+            'description' => $request->description,
+            'original_filename' => $originalFilename,
+            'stored_path' => $storedPath,
+            'mime_type' => $mimeType,
+            'file_size' => $fileSize,
+            'text_content' => $request->text_content,
+            'source_type' => $request->hasFile('file') ? 'file' : 'text',
+            'status' => 'uploaded'
+        ]);
+
+        return response()->json([
+            'message' => 'Note created successfully',
+            'note' => $note
+        ]);
     }
-
-    $note = \App\Models\Note::create([
-        'user_id' => $request->user()->id,
-        'title' => $request->title,
-        'description' => $request->description,
-        'original_filename' => $originalFilename,
-        'stored_path' => $storedPath,
-        'mime_type' => $mimeType,
-        'file_size' => $fileSize,
-        'text_content' => $request->text_content,
-        'source_type' => $request->hasFile('file') ? 'file' : 'text',
-        'status' => 'uploaded'
-    ]);
-
-    return response()->json([
-        'message' => 'Note created successfully',
-        'note' => $note
-    ]);
-}
     // GET /api/notes/{id}
     public function show(Request $request, $id)
     {
-        $note = Note::where('id', $id)
-            ->where('user_id', $request->user()->id)
-            ->firstOrFail();
+        if (!ctype_digit((string) $id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid note id.',
+            ], 422);
+        }
+
+        $id = (int) $id;
+
+        $note = Note::where('user_id', $request->user()->id)
+            ->findOrFail($id);
 
         return response()->json([
-            'data' => $note
+            'success' => true,
+            'data' => $note,
         ]);
     }
-
     // PUT/PATCH /api/notes/{id}
     public function update(Request $request, $id)
     {

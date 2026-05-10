@@ -22,14 +22,22 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+
     'quiz_api' => [
         'url' => env('QUIZ_API_URL'),
         'key' => env('QUIZ_API_KEY'),
         'model' => env('QUIZ_API_MODEL'),
         'timeout' => (int) env('QUIZ_API_TIMEOUT', 120),
     ],
+
     'ai_tutor' => [
-        'url' => env('AI_TUTOR_URL', 'http://127.0.0.1:8015'),
-        'timeout' => env('AI_TUTOR_TIMEOUT', 700),
+        'url' => env('AI_TUTOR_URL', 'http://127.0.0.1:8001'),
+
+        'upload_endpoint' => env('AI_TUTOR_UPLOAD_ENDPOINT', '/upload/'),
+        'mcq_endpoint' => env('AI_TUTOR_MCQ_ENDPOINT', '/generate-quiz/'),
+        'true_false_endpoint' => env('AI_TUTOR_TRUE_FALSE_ENDPOINT', '/api/quiz/true-false'),
+        'fill_blank_endpoint' => env('AI_TUTOR_FILL_BLANK_ENDPOINT', '/api/quiz/fill-blank'),
+
+        'timeout' => (int) env('AI_TUTOR_TIMEOUT', 700),
     ],
 ];
