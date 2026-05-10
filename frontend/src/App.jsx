@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 import AdminRoute from "./routes/AdminRoute.jsx";
 import AppLayout from "./components/AppLayout.jsx";
@@ -11,11 +12,13 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import NotesPage from "./pages/NotesPage.jsx";
 import NoteDetailsPage from "./pages/NoteDetailsPage.jsx";
 import AiToolsPage from "./pages/AiToolsPage.jsx";
-import QuizPage from "./pages/QuizPage.jsx";
 import SummariesPage from "./pages/SummariesPage.jsx";
 import AdminDashboardPage from "./pages/AdminDashboardPage.jsx";
 import AdminUsersPage from "./pages/AdminUsersPage.jsx";
 import AdminNotesPage from "./pages/AdminNotesPage.jsx";
+
+import ImportedAiTutorPage from "./importedAiTutor/ImportedAiTutorPage.jsx";
+
 import { useAuth } from "./auth/AuthContext.jsx";
 
 function App() {
@@ -23,7 +26,6 @@ function App() {
 
     return (
         <Routes>
-            {/* Admin routes */}
             <Route element={<AdminRoute />}>
                 <Route element={<AdminLayout />}>
                     <Route path="/admin" element={<AdminDashboardPage />} />
@@ -32,25 +34,20 @@ function App() {
                 </Route>
             </Route>
 
-            {/* Root redirect */}
             <Route
                 path="/"
                 element={<Navigate to={token ? "/dashboard" : "/login"} replace />}
             />
 
-            {/* Public auth pages */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-            {/* Quiz page */}
             <Route element={<ProtectedRoute />}>
-                <Route path="/quiz" element={<QuizPage />} />
-                <Route path="/quiz/:id" element={<QuizPage />} />
-            </Route>
+                <Route path="/quiz" element={<ImportedAiTutorPage />} />
+                <Route path="/quiz/:id" element={<ImportedAiTutorPage />} />
+                <Route path="/ai-tutor" element={<ImportedAiTutorPage />} />
 
-            {/* Protected pages */}
-            <Route element={<ProtectedRoute />}>
                 <Route element={<AppLayout />}>
                     <Route path="/dashboard" element={<DashboardPage />} />
                     <Route path="/notes" element={<NotesPage />} />
@@ -60,7 +57,6 @@ function App() {
                 </Route>
             </Route>
 
-            {/* 404 */}
             <Route
                 path="*"
                 element={
@@ -76,4 +72,5 @@ function App() {
     );
 }
 
-export default App;
+
+
