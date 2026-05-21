@@ -10,11 +10,9 @@ import AdminLayout from "./components/AdminLayout.jsx";
 import LinkSummaryPage from "./pages/LinkSummaryPage";
 import StudyPlanPage from "./pages/StudyPlanPage.jsx";
 import RecommendationPage from "./pages/RecommendationPage.jsx";
-
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
-
 import DashboardPage from "./pages/DashboardPage.jsx";
 import NotesPage from "./pages/NotesPage.jsx";
 import NoteDetailsPage from "./pages/NoteDetailsPage.jsx";
@@ -40,30 +38,6 @@ function App() {
 
   return (
     <Routes>
-      {/* Admin routes */}
-      <Route element={<AdminRoute />}>
-      <Route path="/admin/ai-management" element={<AdminAiManagementPage />} />
-        <Route element={<AdminLayout />}>
-          <Route path="/admin" element={<AdminDashboardPage />} />
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/notes" element={<AdminNotesPage />} />
-          <Route
-            path="/admin/announcements"
-            element={<AdminAnnouncementsPage />}
-          />
-          <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
-          <Route path="/admin/settings" element={<AdminSettingsPage />} />
-          <Route
-            path="/admin/ai-management"
-            element={<AdminAiManagementPage />}
-          />
-        </Route>
-      </Route>
-      <Route
-  path="/admin/quiz-management"
-  element={<AdminQuizManagementPage />}
-/>
-
       {/* Public routes */}
       <Route
         path="/"
@@ -75,6 +49,20 @@ function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/study-summary-design" element={<StudySummaryDesign />} />
+
+      {/* Admin protected routes */}
+      <Route element={<AdminRoute />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="notes" element={<AdminNotesPage />} />
+          <Route path="announcements" element={<AdminAnnouncementsPage />} />
+          <Route path="feedback" element={<AdminFeedbackPage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
+          <Route path="ai-management" element={<AdminAiManagementPage />} />
+          <Route path="quizzes" element={<AdminQuizManagementPage />} />
+        </Route>
+      </Route>
 
       {/* User protected routes */}
       <Route element={<ProtectedRoute />}>
