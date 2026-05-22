@@ -1,47 +1,34 @@
 import apiClient from "./client";
 
 export const authAPI = {
-    login: (credentials) => apiClient.post("/auth/login", credentials),
-    register: (data) => apiClient.post("/auth/register", data),
-    logout: () => apiClient.post("/auth/logout"),
-    me: () => apiClient.get("/auth/me"),
+  login: (credentials) => apiClient.post("/auth/login", credentials),
+  register: (data) => apiClient.post("/auth/register", data),
+  logout: () => apiClient.post("/auth/logout"),
+  me: () => apiClient.get("/auth/me"),
 };
 
 export const adminAPI = {
-    // Get admin stats
-    getStats: () => apiClient.get("/admin/stats"),
+  getDashboard: () => apiClient.get("/admin/dashboard"),
+  getUsers: (params) => apiClient.get("/admin/users", { params }),
+  createUser: (data) => apiClient.post("/admin/users", data),
+  updateUser: (userId, data) => apiClient.put(`/admin/users/${userId}`, data),
+  deleteUser: (userId) => apiClient.delete(`/admin/users/${userId}`),
 
-    // Get all users
-    getUsers: (params) => apiClient.get("/admin/users", { params }),
+  toggleAdmin: (userId) =>
+    apiClient.patch(`/admin/users/${userId}/toggle-admin`),
 
-    // Get single user
-    getUser: (userId) => apiClient.get(`/admin/users/${userId}`),
+  toggleStatus: (userId) =>
+    apiClient.patch(`/admin/users/${userId}/toggle-status`),
 
-    // Create user
-    createUser: (data) => apiClient.post("/admin/users", data),
+  getNotes: (params) => apiClient.get("/admin/notes", { params }),
+  updateNote: (noteId, data) => apiClient.put(`/admin/notes/${noteId}`, data),
+  deleteNote: (noteId) => apiClient.delete(`/admin/notes/${noteId}`),
 
-    // Update user
-    updateUser: (userId, data) =>
-        apiClient.put(`/admin/users/${userId}`, data),
+  toggleFeaturedNote: (noteId) =>
+    apiClient.patch(`/admin/notes/${noteId}/toggle-featured`),
+};
 
-    // Delete user
-    deleteUser: (userId) => apiClient.delete(`/admin/users/${userId}`),
-
-    // Change user role
-    changeUserRole: (userId, isAdmin) =>
-        apiClient.post(`/admin/users/${userId}/change-role`, {
-            is_admin: isAdmin,
-        }),
-
-    // Change user status
-    changeUserStatus: (userId, status) =>
-        apiClient.post(`/admin/users/${userId}/change-status`, { status }),
-
-    // Manually verify user email
-    verifyUserEmail: (userId) =>
-        apiClient.post(`/admin/users/${userId}/verify-email`),
-
-    // Resend verification code to user
-    resendVerificationToUser: (userId) =>
-        apiClient.post(`/admin/users/${userId}/resend-verification`),
+export default {
+  authAPI,
+  adminAPI,
 };
