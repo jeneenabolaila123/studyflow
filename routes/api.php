@@ -1,8 +1,8 @@
 <?php
 
-use App\Http\Controllers\Api\AdminFeatureController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Http;
+
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Api\NoteController;
 use App\Http\Controllers\Api\AiController;
@@ -13,30 +13,11 @@ use App\Http\Controllers\Api\AiTutorController;
 use App\Http\Controllers\Api\StudyPlanController;
 use App\Http\Controllers\Api\StudyRecommendationController;
 use App\Http\Controllers\Api\FeedbackController;
-use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminUsersController;
 use App\Http\Controllers\Api\Admin\AdminNotesController;
-use App\Http\Controllers\Api\Admin\AdminAnnouncementsController;
-use App\Http\Controllers\Api\Admin\AdminFeedbackController;
-use App\Http\Controllers\Api\Admin\AdminRemindersController;
-use App\Http\Controllers\Api\Admin\AdminAiUsageController;
 use App\Http\Controllers\Api\LinkSummaryController;
 use App\Http\Controllers\Api\AiConversationController;
-use App\Http\Controllers\Api\Admin\AdminStudentActivityController;
-use App\Http\Controllers\Api\StudentRemindersController;
-
-
-Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
-    Route::post('/quiz-issue-reports', [\App\Http\Controllers\Api\QuizIssueReportController::class, 'store']);
-});
-
-Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
-    Route::get('/study-plans', [StudyPlanController::class, 'index']);
-    Route::post('/study-plans', [StudyPlanController::class, 'store']);
-    Route::post('/study-plans/{studyPlan}/send-email', [StudyPlanController::class, 'sendEmail']);
-});
-
 
 /*
 |--------------------------------------------------------------------------
@@ -55,12 +36,11 @@ Route::get('/ping', function () {
 | Feedback
 |--------------------------------------------------------------------------
 */
-Route::get('/feedback/recent', [FeedbackController::class, 'recent']);
-Route::get('/announcements', [AnnouncementController::class, 'index']);
 
-Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
+Route::get('/feedback/recent', [FeedbackController::class, 'recent']);
+
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('/feedback', [FeedbackController::class, 'store']);
-    Route::post('/announcements/{announcement}/read', [AnnouncementController::class, 'markRead']);
 });
 
 /*
@@ -81,7 +61,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])
         ->middleware('throttle:login');
 
-    Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
+    Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
     });
@@ -93,7 +73,7 @@ Route::prefix('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     Route::get('/ai/conversations', [AiConversationController::class, 'index']);
     Route::post('/ai/conversations', [AiConversationController::class, 'store']);
 
@@ -112,7 +92,7 @@ Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notes', [NoteController::class, 'index']);
     Route::post('/notes', [NoteController::class, 'store']);
     Route::get('/notes/{id}', [NoteController::class, 'show']);
@@ -138,7 +118,7 @@ Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'last_seen'])->prefix('ai')->group(function () {
+Route::middleware('auth:sanctum')->prefix('ai')->group(function () {
     Route::post('/generate-quiz', [AiController::class, 'generateQuiz']);
     Route::post('/summarize', [AiController::class, 'summarize']);
     Route::post('/quiz', [AiController::class, 'quiz']);
@@ -170,7 +150,7 @@ Route::prefix('local-ai')->group(function () {
     Route::match(['get', 'post'], '/health', [LocalAiController::class, 'health']);
 });
 
-Route::middleware(['auth:sanctum', 'last_seen'])->prefix('local-ai')->group(function () {
+Route::middleware('auth:sanctum')->prefix('local-ai')->group(function () {
     Route::post('/summary/text', [LocalAiController::class, 'summarizeText']);
     Route::post('/summary/file', [LocalAiController::class, 'summarizeFile']);
 
@@ -184,9 +164,9 @@ Route::middleware(['auth:sanctum', 'last_seen'])->prefix('local-ai')->group(func
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'last_seen'])->post('/study-plan/generate', [StudyPlanController::class, 'generate']);
+Route::middleware('auth:sanctum')->post('/study-plan/generate', [StudyPlanController::class, 'generate']);
 
-Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('/study-recommendations', [StudyRecommendationController::class, 'store']);
     Route::get('/study-recommendations/latest', [StudyRecommendationController::class, 'latest']);
 });
@@ -205,87 +185,20 @@ Route::post('/ai/link-summary', [LinkSummaryController::class, 'summarize']);
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'last_seen', 'admin'])->prefix('admin')->group(function () {
-    Route::middleware('admin_feature:dashboard')->group(function () {
-        Route::get('/dashboard', [AdminDashboardController::class, 'dashboard']);
-    });
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/dashboard', [AdminDashboardController::class, 'dashboard']);
 
-    Route::middleware('admin_feature:activity_logs')->group(function () {
-        Route::get('/activity', [AdminFeatureController::class, 'recentActivities']);
-        Route::get('/recent-activities', [AdminFeatureController::class, 'recentActivities']);
-        Route::get('/student-activity', [AdminStudentActivityController::class, 'index']);
-    });
+    Route::get('/users', [AdminUsersController::class, 'index']);
+    Route::post('/users', [AdminUsersController::class, 'store']);
+    Route::put('/users/{user}', [AdminUsersController::class, 'update']);
+    Route::delete('/users/{user}', [AdminUsersController::class, 'destroy']);
+    Route::patch('/users/{user}/toggle-admin', [AdminUsersController::class, 'toggleAdmin']);
+    Route::patch('/users/{user}/toggle-status', [AdminUsersController::class, 'toggleStatus']);
 
-    Route::middleware('admin_feature:users')->group(function () {
-        Route::get('/users', [AdminUsersController::class, 'index']);
-        Route::post('/users', [AdminUsersController::class, 'store']);
-        Route::put('/users/{user}', [AdminUsersController::class, 'update']);
-        Route::delete('/users/{user}', [AdminUsersController::class, 'destroy']);
-        Route::patch('/users/{user}/role', [AdminUsersController::class, 'updateRole']);
-        Route::patch('/users/{user}/status', [AdminUsersController::class, 'updateStatus']);
-        Route::patch('/users/{user}/toggle-admin', [AdminUsersController::class, 'toggleAdmin']);
-        Route::patch('/users/{user}/toggle-status', [AdminUsersController::class, 'toggleStatus']);
-        Route::post('/users/{user}/reset-weekly-usage', [AdminUsersController::class, 'resetWeeklyUsage']);
-        Route::post('/users/{user}/send-we-miss-you', [AdminUsersController::class, 'sendWeMissYou']);
-        Route::post('/users/{id}/we-miss-you', [AdminFeatureController::class, 'sendWeMissYouEmail']);
-    });
-
-    Route::middleware('admin_feature:notes')->group(function () {
-        Route::get('/notes', [AdminNotesController::class, 'index']);
-        Route::put('/notes/{note}', [AdminNotesController::class, 'update']);
-        Route::delete('/notes/{note}', [AdminNotesController::class, 'destroy']);
-        Route::post('/notes/{note}/reprocess', [AdminNotesController::class, 'reprocess']);
-        Route::patch('/notes/{note}/toggle-featured', [AdminNotesController::class, 'toggleFeatured']);
-        Route::patch('/notes/{note}/toggle-status', [AdminNotesController::class, 'toggleStatus']);
-    });
-
-    Route::middleware('admin_feature:ai_usage')->group(function () {
-        Route::get('/ai-usage', [AdminAiUsageController::class, 'index']);
-    });
-
-    Route::middleware('admin_feature:feedback')->group(function () {
-        Route::get('/feedback', [AdminFeedbackController::class, 'index']);
-        Route::patch('/feedback/{feedback}/resolve', [AdminFeedbackController::class, 'resolve']);
-        Route::patch('/feedback/{feedback}/toggle-visibility', [AdminFeedbackController::class, 'toggleVisibility']);
-        Route::delete('/feedback/{feedback}', [AdminFeedbackController::class, 'destroy']);
-    });
-
-    Route::middleware('admin_feature:announcements')->group(function () {
-        Route::get('/announcements', [AdminAnnouncementsController::class, 'index']);
-        Route::post('/announcements', [AdminAnnouncementsController::class, 'store']);
-        Route::put('/announcements/{announcement}', [AdminAnnouncementsController::class, 'update']);
-        Route::delete('/announcements/{announcement}', [AdminAnnouncementsController::class, 'destroy']);
-        Route::post('/announcements/{announcement}/send-email', [AdminAnnouncementsController::class, 'sendEmail']);
-        Route::patch('/announcements/{announcement}/toggle-status', [AdminAnnouncementsController::class, 'toggleStatus']);
-    });
-
-    Route::get('/reminders', [AdminRemindersController::class, 'index']);
-    Route::post('/reminders', [AdminRemindersController::class, 'store']);
-    Route::put('/reminders/{reminder}', [AdminRemindersController::class, 'update']);
-    Route::delete('/reminders/{reminder}', [AdminRemindersController::class, 'destroy']);
-
-    Route::get('/exam-reminders', [AdminFeatureController::class, 'examReminders']);
-    Route::post('/exam-reminders', [AdminFeatureController::class, 'storeExamReminder']);
-    Route::post('/exam-reminders/{id}/send', [AdminFeatureController::class, 'sendExamReminder']);
-
-    Route::get('/quiz-reports', [AdminFeatureController::class, 'quizReports']);
-    Route::patch('/quiz-reports/{id}/status', [AdminFeatureController::class, 'updateQuizReportStatus']);
-
-    Route::get('/study-plans', [AdminFeatureController::class, 'studyPlans']);
-    Route::delete('/study-plans/{id}', [AdminFeatureController::class, 'deleteStudyPlan']);
-
-    Route::post('/recommendation-email', [AdminFeatureController::class, 'sendRecommendationEmail']);
-});
-
-/*
-|--------------------------------------------------------------------------
-| Student Reminder Routes
-|--------------------------------------------------------------------------
-*/
-
-Route::middleware(['auth:sanctum', 'last_seen'])->prefix('student')->group(function () {
-    Route::get('/reminders', [StudentRemindersController::class, 'index']);
-    Route::post('/reminders/{reminder}/dismiss', [StudentRemindersController::class, 'dismiss']);
+    Route::get('/notes', [AdminNotesController::class, 'index']);
+    Route::put('/notes/{note}', [AdminNotesController::class, 'update']);
+    Route::delete('/notes/{note}', [AdminNotesController::class, 'destroy']);
+    Route::patch('/notes/{note}/toggle-featured', [AdminNotesController::class, 'toggleFeatured']);
 });
 
 /*
