@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Http\Controllers\Api\AdminFeatureController;
 use Illuminate\Support\Facades\Route;
@@ -25,11 +25,17 @@ use App\Http\Controllers\Api\LinkSummaryController;
 use App\Http\Controllers\Api\AiConversationController;
 use App\Http\Controllers\Api\Admin\AdminStudentActivityController;
 use App\Http\Controllers\Api\StudentRemindersController;
+use App\Http\Controllers\ApiAiController;
 
-
-Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
-    Route::post('/quiz-issue-reports', [\App\Http\Controllers\Api\QuizIssueReportController::class, 'store']);
+Route::post('/ai-api/summary', [ApiAiController::class, 'summary']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/ai-api/summary', [ApiAiController::class, 'summary']);
 });
+
+Route
+    ::middleware(['auth:sanctum', 'last_seen'])->group(function () {
+        Route::post('/quiz-issue-reports', [\App\Http\Controllers\Api\QuizIssueReportController::class, 'store']);
+    });
 
 Route::middleware(['auth:sanctum', 'last_seen'])->group(function () {
     Route::get('/study-plans', [StudyPlanController::class, 'index']);

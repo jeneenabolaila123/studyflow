@@ -5,7 +5,7 @@ import random
 import re
 from pathlib import Path
 from typing import Any
-
+from app.openrouter_quiz import generate_quiz_openrouter
 import requests
 import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -767,9 +767,85 @@ async def post_quiz(
         raise HTTPException(status_code=400, detail="Invalid file type. PDF is required.")
 
     raw_bytes = await document.read()
-    return _generate_mcq_from_pdf(raw_bytes, title=title or Path(document.filename).stem, question=question)
+
+    pages = _extract_pdf_pages(raw_bytes)
+
+    if not pages or len(_full_text_from_pages(pages).strip()) < 20:
+        raise HTTPException(status_code=422, detail="Could not extract enough readable text from this PDF.")
+
+    content = _full_text_from_pages(pages)
+    final_count = int(total_questions or questions_count or 5)
+    final_title = title or Path(document.filename).stem
+
+    try:
+        result = generate_quiz_openrouter(
+            content=content,
+            title=final_title,
+            quiz_type=quiz_type,
+            difficulty=difficulty,
+            questions_count=final_count,
+        )
+
+        # Compatibility: support both correctAnswer and correct_answer
+        for q in result.get("questions", []):
+            if "correct_answer" not in q and "correctAnswer" in q:
+                q["correct_answer"] = q["correctAnswer"]
+            if "correctAnswer" not in q and "correct_answer" in q:
+                q["correctAnswer"] = q["correct_answer"]
+
+        result["type"] = "multiple_choice"
+        result["difficulty"] = difficulty
+        result["total_questions"] = len(result.get("questions", []))
+        result["topic"] = final_title
+        result["source"] = "openrouter_api"
+
+        return result
+
+    except Exception as e:
+        # Emergency fallback so the demo does not fully break
+        fallback = _generate_mcq_from_pdf(
+            raw_bytes,
+            title=final_title,
+            question=question,
+        )
+        fallback["source"] = "deterministic_fallback_after_openrouter_error"
+        fallback["openrouter_error"] = str(e)
+        return fallback
+class GenerateQuizRequest(BaseModel):
+    content: str
+    title: str | None = None
+    quiz_type: str = "mcq"
+    difficulty: str = "mixed"
+    questions_count: int = 5
+    total_questions: int | None = None
 
 
+@app.post("/generate-quiz")
+@app.post("/api/generate-quiz")
+async def generate_quiz_json(request: GenerateQuizRequest):
+    final_count = int(request.total_questions or request.questions_count or 5)
+
+    result = generate_quiz_openrouter(
+        content=request.content,
+        title=request.title or "StudyFlow Note",
+        quiz_type=request.quiz_type,
+        difficulty=request.difficulty,
+        questions_count=final_count,
+    )
+
+    for q in result.get("questions", []):
+        if "correct_answer" not in q and "correctAnswer" in q:
+            q["correct_answer"] = q["correctAnswer"]
+        if "correctAnswer" not in q and "correct_answer" in q:
+            q["correctAnswer"] = q["correct_answer"]
+
+    result["type"] = "multiple_choice"
+    result["difficulty"] = request.difficulty
+    result["total_questions"] = len(result.get("questions", []))
+    result["topic"] = request.title or "StudyFlow Note"
+    result["source"] = "openrouter_api"
+
+    return result
 @app.get("/health")
 def health():
     return {

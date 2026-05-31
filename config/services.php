@@ -69,5 +69,12 @@ return [
         'timeout' => env('OLLAMA_TIMEOUT', 620),
         'connect_timeout' => env('OLLAMA_CONNECT_TIMEOUT', 10),
     ],
+    'ai_api' => [
+    'provider' => env('AI_API_PROVIDER', 'openrouter'),
+    'key' => env('AI_API_KEY'),
+    'model' => env('AI_API_MODEL', 'openai/gpt-4o-mini'),
+    'base_url' => env('AI_API_BASE_URL', 'https://openrouter.ai/api/v1'),
+    'timeout' => env('AI_API_TIMEOUT', 120),
+],
 
 ];

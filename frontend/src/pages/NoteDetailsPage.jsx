@@ -46,7 +46,8 @@ export default function NoteDetailsPage() {
     const [summaryFilename, setSummaryFilename] = useState("");
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryTime, setSummaryTime] = useState(null);
-
+    const [apiSummarySections, setApiSummarySections] = useState(null);
+    const [summaryMode, setSummaryMode] = useState(null);
     const [aiError, setAiError] = useState("");
 
     const [chatSessions, setChatSessions] = useState([]);
@@ -182,6 +183,8 @@ export default function NoteDetailsPage() {
             setAiError("");
             setSummary("");
             setSummarySheet(null);
+            setApiSummarySections(null);
+            setSummaryMode(null);
             setSummaryTime(null);
             setSummaryLoading(true);
 
@@ -236,6 +239,7 @@ export default function NoteDetailsPage() {
 
             setSummary(summaryText);
             setSummarySheet(generatedSheet);
+            setSummaryMode("local");
 
             setSummaryFilename(
                 note?.original_filename || note?.title || "this note"
@@ -316,20 +320,20 @@ export default function NoteDetailsPage() {
 
         const outputName = `Summary_of_${safeBase || `note-${id}`}.txt`;
 
-        const blob = new Blob(
-            [
-                formatStudySheetAsText(summarySheet || summary, {
-                    title: `Summary of ${
-                        note?.title || note?.original_filename || "this note"
-                    }`,
-                    sourceType: isPdfNote ? "pdf" : "text",
-                    fileName: note?.original_filename || note?.title || "",
-                }),
-            ],
-            {
-                type: "text/plain;charset=utf-8",
-            }
-        );
+        const downloadText =
+            summaryMode === "api"
+                ? summary
+                : formatStudySheetAsText(summarySheet || summary, {
+                      title: `Summary of ${
+                          note?.title || note?.original_filename || "this note"
+                      }`,
+                      sourceType: isPdfNote ? "pdf" : "text",
+                      fileName: note?.original_filename || note?.title || "",
+                  });
+
+        const blob = new Blob([downloadText], {
+            type: "text/plain;charset=utf-8",
+        });
 
         const url = URL.createObjectURL(blob);
 
@@ -346,6 +350,133 @@ export default function NoteDetailsPage() {
     const handleOpenQuizPage = () => {
         notifyDashboardUpdate("studyflow_ai_usage_count");
         navigate(`/quiz/${id}?type=mcq&difficulty=Mixed&count=5`);
+    };
+
+    const generateSummaryWithApi = async () => {
+        try {
+            setAiError("");
+            setSummary("");
+            setSummarySheet(null);
+            setApiSummarySections(null);
+            setSummaryMode(null);
+            setSummaryTime(null);
+            setSummaryLoading(true);
+
+            if (!canGenerateSummary) {
+                setAiError("No text or PDF found for this note.");
+                return;
+            }
+
+            const res = await axiosClient.post("/ai-api/summary", {
+                note_id: note.id,
+                content: note?.text_content || "",
+            });
+
+            if (!res.data?.success) {
+                throw new Error(res.data?.message || "API summary failed.");
+            }
+
+            const apiSummary = res.data?.summary || {};
+
+            const toList = (value) => {
+                if (Array.isArray(value)) {
+                    return value.map((item) => String(item).trim()).filter(Boolean);
+                }
+
+                if (typeof value === "string") {
+                    return value
+                        .split(/\n+/)
+                        .map((item) => item.replace(/^[-•*\d.)\s]+/, "").trim())
+                        .filter(Boolean);
+                }
+
+                return [];
+            };
+
+            const sections = {
+                mainIdeas: toList(apiSummary.main_ideas || res.data?.main_ideas),
+                keyFacts: toList(apiSummary.key_facts || res.data?.key_facts),
+                importantDetails: toList(
+                    apiSummary.important_details || res.data?.important_details
+                ),
+                examRevisionNotes: toList(
+                    apiSummary.exam_revision_notes || res.data?.exam_revision_notes
+                ),
+            };
+
+            const hasAnySection = Object.values(sections).some(
+                (items) => items.length > 0
+            );
+
+            if (!hasAnySection) {
+                setAiError("API summary returned empty sections.");
+                return;
+            }
+
+            const summaryText = [
+                "Main Ideas:",
+                ...sections.mainIdeas.map((item) => `- ${item}`),
+                "",
+                "Key Facts:",
+                ...sections.keyFacts.map((item) => `- ${item}`),
+                "",
+                "Important Details:",
+                ...sections.importantDetails.map((item) => `- ${item}`),
+                "",
+                "Exam Revision Notes:",
+                ...sections.examRevisionNotes.map((item) => `- ${item}`),
+            ].join("\n");
+
+            const displayTitle = `Summary of ${
+                note?.title || note?.original_filename || "this note"
+            }`;
+
+            setSummary(summaryText);
+            setSummarySheet(null);
+            setApiSummarySections(sections);
+            setSummaryMode("api");
+            setSummaryFilename(note?.original_filename || note?.title || "this note");
+
+            try {
+                await axiosClient.post("/summaries", {
+                    note_id: note.id,
+                    title: displayTitle,
+                    source_type: isPdfNote ? "pdf" : "text",
+                    summary_text: summaryText,
+                });
+
+                notifyDashboardUpdate("studyflow_ai_summaries_count");
+            } catch (saveErr) {
+                console.error(
+                    "SAVE API SUMMARY ERROR:",
+                    saveErr?.response?.data || saveErr.message
+                );
+
+                setAiError(
+                    saveErr?.response?.data?.message ||
+                        "API summary generated, but failed to save in My Summaries."
+                );
+            }
+
+            const seconds =
+                res.data?.processing_time_seconds ||
+                res.data?.data?.processing_time_seconds ||
+                null;
+
+            if (seconds) {
+                setSummaryTime(seconds);
+            }
+        } catch (err) {
+            console.error("API SUMMARY ERROR:", err?.response?.data || err.message);
+
+            setAiError(
+                err?.response?.data?.message ||
+                    err?.response?.data?.error ||
+                    "API summary failed. Please try again."
+            );
+        } finally {
+            setSummaryLoading(false);
+        }
     };
 
     const openChat = async (conversationUuid) => {
@@ -655,7 +786,7 @@ export default function NoteDetailsPage() {
                     style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
                 >
                     <button
-                        className="btn btn-primary"
+                        className="btn btn-outline-primary"
                         onClick={generateSummary}
                         disabled={summaryLoading || !canGenerateSummary}
                     >
@@ -663,6 +794,19 @@ export default function NoteDetailsPage() {
                             <AiThinking label="Summarizing" />
                         ) : (
                             "Generate Summary"
+                        )}
+                    </button>
+
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={generateSummaryWithApi}
+                        disabled={summaryLoading || !canGenerateSummary}
+                    >
+                        {summaryLoading ? (
+                            <AiThinking label="Generating with API" />
+                        ) : (
+                            "Generate Summary with API"
                         )}
                     </button>
 
@@ -760,18 +904,98 @@ export default function NoteDetailsPage() {
                             </div>
                         )}
 
-                        <StudySheetSummaryCard
-                            summary={summarySheet || summary}
-                            title={`Summary of ${
-                                summaryFilename ||
-                                note?.original_filename ||
-                                "this note"
-                            }`}
-                            sourceLabel={isPdfNote ? "PDF Summary" : "Text Summary"}
-                            meta={[
-                                summaryTime ? { label: `${summaryTime}s` } : null,
-                            ].filter(Boolean)}
-                        />
+                        {summaryMode === "api" && (
+                            <div
+                                style={{
+                                    marginBottom: 12,
+                                    color: "#16a34a",
+                                    fontWeight: 700,
+                                    fontSize: "14px",
+                                }}
+                            >
+                                API Summary
+                            </div>
+                        )}
+
+                        {summaryMode === "api" && apiSummarySections ? (
+                            <div style={{ display: "grid", gap: 16 }}>
+                                {[
+                                    ["Main Ideas", apiSummarySections.mainIdeas],
+                                    ["Key Facts", apiSummarySections.keyFacts],
+                                    [
+                                        "Important Details",
+                                        apiSummarySections.importantDetails,
+                                    ],
+                                    [
+                                        "Exam Revision Notes",
+                                        apiSummarySections.examRevisionNotes,
+                                    ],
+                                ].map(([sectionTitle, items]) => (
+                                    <div
+                                        key={sectionTitle}
+                                        style={{
+                                            padding: 16,
+                                            borderRadius: 14,
+                                            background: "#ffffff",
+                                            border: "1px solid #e5e7eb",
+                                        }}
+                                    >
+                                        <h4
+                                            style={{
+                                                marginTop: 0,
+                                                marginBottom: 10,
+                                            }}
+                                        >
+                                            {sectionTitle}
+                                        </h4>
+
+                                        {items?.length > 0 ? (
+                                            <ul
+                                                style={{
+                                                    marginBottom: 0,
+                                                    paddingLeft: 20,
+                                                }}
+                                            >
+                                                {items.map((item, index) => (
+                                                    <li
+                                                        key={index}
+                                                        style={{ marginBottom: 8 }}
+                                                    >
+                                                        {item}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p
+                                                style={{
+                                                    marginBottom: 0,
+                                                    color: "#6b7280",
+                                                }}
+                                            >
+                                                No points returned for this section.
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <StudySheetSummaryCard
+                                summary={summarySheet || summary}
+                                title={`Summary of ${
+                                    summaryFilename ||
+                                    note?.original_filename ||
+                                    "this note"
+                                }`}
+                                sourceLabel={
+                                    isPdfNote ? "PDF Summary" : "Text Summary"
+                                }
+                                meta={[
+                                    summaryTime
+                                        ? { label: `${summaryTime}s` }
+                                        : null,
+                                ].filter(Boolean)}
+                            />
+                        )}
                     </div>
                 )}
             </div>

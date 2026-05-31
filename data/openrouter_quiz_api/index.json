@@ -1,0 +1,52 @@
+{
+  "pdf_9a6215ace78f4775": {
+    "pdf_id": "pdf_9a6215ace78f4775",
+    "name": "SA_IE.pdf",
+    "collection_name": "pdf_9a6215ace78f4775",
+    "pdf_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\pdfs\\pdf_9a6215ace78f4775_SA_IE.pdf",
+    "text_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\texts\\pdf_9a6215ace78f4775.txt",
+    "doc_count": 5,
+    "page_count": 27,
+    "is_sample": false
+  },
+  "pdf_d33fa0a1bf2d482c": {
+    "pdf_id": "pdf_d33fa0a1bf2d482c",
+    "name": "SA_IE.pdf",
+    "collection_name": "pdf_d33fa0a1bf2d482c",
+    "pdf_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\pdfs\\pdf_d33fa0a1bf2d482c_SA_IE.pdf",
+    "text_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\texts\\pdf_d33fa0a1bf2d482c.txt",
+    "doc_count": 5,
+    "page_count": 27,
+    "is_sample": false
+  },
+  "pdf_eb86274aa4614230": {
+    "pdf_id": "pdf_eb86274aa4614230",
+    "name": "W3L2 (1).pdf",
+    "collection_name": "pdf_eb86274aa4614230",
+    "pdf_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\pdfs\\pdf_eb86274aa4614230_W3L2 (1).pdf",
+    "text_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\texts\\pdf_eb86274aa4614230.txt",
+    "doc_count": 2,
+    "page_count": 30,
+    "is_sample": false
+  },
+  "pdf_f3c68249d8ca4ae1": {
+    "pdf_id": "pdf_f3c68249d8ca4ae1",
+    "name": "W3L2 (1).pdf",
+    "collection_name": "pdf_f3c68249d8ca4ae1",
+    "pdf_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\pdfs\\pdf_f3c68249d8ca4ae1_W3L2 (1).pdf",
+    "text_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\texts\\pdf_f3c68249d8ca4ae1.txt",
+    "doc_count": 2,
+    "page_count": 30,
+    "is_sample": false
+  },
+  "pdf_2cbb06c4db2f4513": {
+    "pdf_id": "pdf_2cbb06c4db2f4513",
+    "name": "W4L2.pdf",
+    "collection_name": "pdf_2cbb06c4db2f4513",
+    "pdf_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\pdfs\\pdf_2cbb06c4db2f4513_W4L2.pdf",
+    "text_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\texts\\pdf_2cbb06c4db2f4513.txt",
+    "doc_count": 2,
+    "page_count": 19,
+    "is_sample": false
+  }
+}
