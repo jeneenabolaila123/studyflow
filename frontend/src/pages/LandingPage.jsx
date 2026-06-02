@@ -151,7 +151,7 @@ function TestimonialsCarousel() {
             {
                 name: "Omar S.",
                 message:
-                    "The ‘Ask PDF’ feels like having a study buddy. I can quickly clarify concepts without jumping between tabs.",
+                    "The â€˜Ask PDFâ€™ feels like having a study buddy. I can quickly clarify concepts without jumping between tabs.",
                 rating: 5,
             },
             {
@@ -169,7 +169,7 @@ function TestimonialsCarousel() {
             {
                 name: "Noor A.",
                 message:
-                    "Everything looks clean and fast. It feels like a premium study app — not a messy tool.",
+                    "Everything looks clean and fast. It feels like a premium study app â€” not a messy tool.",
                 rating: 5,
             },
         ],
@@ -420,7 +420,7 @@ export default function LandingPage() {
                                 style={{ color: "var(--color-muted)" }}
                             >
                                 StudyFlow helps you learn faster by turning your notes into clear summaries, practice quizzes,
-                                and instant answers — so you spend less time organizing and more time understanding.
+                                and instant answers â€” so you spend less time organizing and more time understanding.
                             </p>
 
                             <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
@@ -478,7 +478,7 @@ export default function LandingPage() {
                         style={{ borderColor: "var(--color-border)" }}
                     >
                         <div className="text-[12.5px]" style={{ color: "var(--color-muted)" }}>
-                            © {new Date().getFullYear()} StudyFlow
+                            Â© {new Date().getFullYear()} StudyFlow
                         </div>
                         <div className="flex items-center gap-4">
                             <a

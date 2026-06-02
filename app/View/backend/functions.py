@@ -698,4 +698,3 @@ def translation_to_french(text, llm):
     """
     translation = llm(f"translate in french this : {text}")
     return translation
-

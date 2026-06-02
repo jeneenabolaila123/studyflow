@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ============================================================
-   STUDYFLOW — Design System
+   STUDYFLOW â€” Design System
    ============================================================ */
 :root {
     --color-bg: #f9fafb;
@@ -577,11 +577,6 @@ body {
     color: #d97706;
     border-color: #fed7aa;
 }
-.badge-danger {
-    background: #fef2f2;
-    color: #b91c1c;
-    border-color: #fecaca;
-}
 .badge-info {
     background: #eff6ff;
     color: #3b82f6;
@@ -783,7 +778,7 @@ body {
    AUTH PAGES
    ============================================================ */
 
-/* ── Keyframes ── */
+/* â”€â”€ Keyframes â”€â”€ */
 @keyframes orbFloat {
     0%,
     100% {
@@ -890,7 +885,7 @@ body {
     }
 }
 
-/* ── Page ── */
+/* â”€â”€ Page â”€â”€ */
 .auth-page {
     min-height: 100vh;
     background: linear-gradient(
@@ -924,7 +919,7 @@ body {
     background-size: 48px 48px;
 }
 
-/* ── Glowing orbs ── */
+/* â”€â”€ Glowing orbs â”€â”€ */
 .auth-orb {
     position: absolute;
     border-radius: 50%;
@@ -961,7 +956,7 @@ body {
     opacity: 0.28;
 }
 
-/* ── Floating emoji stickers ── */
+/* â”€â”€ Floating emoji stickers â”€â”€ */
 .auth-sticker {
     position: absolute;
     font-size: 28px;
@@ -1022,7 +1017,7 @@ body {
     font-size: 22px;
 }
 
-/* ── Card ── */
+/* â”€â”€ Card â”€â”€ */
 .auth-card {
     background: rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(24px);
@@ -1056,7 +1051,7 @@ body {
     border-radius: var(--radius-xl);
 }
 
-/* ── Logo ── */
+/* â”€â”€ Logo â”€â”€ */
 .auth-logo {
     display: flex;
     align-items: center;
@@ -1080,7 +1075,7 @@ body {
     letter-spacing: -0.4px;
 }
 
-/* ── Headline ── */
+/* â”€â”€ Headline â”€â”€ */
 .auth-headline {
     margin-bottom: 28px;
     animation: fieldIn 0.5s 0.2s both;
@@ -1096,19 +1091,19 @@ body {
     color: rgba(255, 255, 255, 0.5);
 }
 
-/* ── Alert ── */
+/* â”€â”€ Alert â”€â”€ */
 .auth-alert-shake {
     animation: shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
-/* ── Form ── */
+/* â”€â”€ Form â”€â”€ */
 .auth-form {
     display: flex;
     flex-direction: column;
     gap: 16px;
 }
 
-/* ── Field ── */
+/* â”€â”€ Field â”€â”€ */
 .auth-field {
     display: flex;
     flex-direction: column;
@@ -1193,7 +1188,7 @@ body {
     color: rgba(255, 255, 255, 0.7);
 }
 
-/* ── Submit button ── */
+/* â”€â”€ Submit button â”€â”€ */
 .auth-submit-btn {
     position: relative;
     overflow: hidden;
@@ -1252,7 +1247,7 @@ body {
     gap: 8px;
 }
 
-/* ── Footer ── */
+/* â”€â”€ Footer â”€â”€ */
 .auth-footer {
     margin-top: 22px;
     font-size: 13px;
@@ -1286,7 +1281,7 @@ body {
     background: rgba(255, 255, 255, 0.12);
 }
 
-/* ── Dark-card overrides for .field/.input used in RegisterPage ── */
+/* â”€â”€ Dark-card overrides for .field/.input used in RegisterPage â”€â”€ */
 .auth-card .field-label {
     color: rgba(255, 255, 255, 0.75);
     font-size: 13px;
@@ -1990,7 +1985,7 @@ body {
 }
 
 /* ============================================================
-   DASHBOARD — UPLOAD REFACTOR
+   DASHBOARD â€” UPLOAD REFACTOR
    ============================================================ */
 
 /* Fade-in on load */
@@ -2023,7 +2018,7 @@ body {
     margin-bottom: 16px;
 }
 
-/* ── Upload card ── */
+/* â”€â”€ Upload card â”€â”€ */
 .upload-card {
     background: var(--color-card);
     border: 1px solid var(--color-border);
@@ -2089,7 +2084,7 @@ body {
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
-/* ── Drop zone ── */
+/* â”€â”€ Drop zone â”€â”€ */
 .drop-zone {
     border: 2px dashed var(--color-border);
     border-radius: var(--radius-lg);
@@ -2269,7 +2264,7 @@ body {
     background: #fef2f2;
 }
 
-/* ── Divider ── */
+/* â”€â”€ Divider â”€â”€ */
 .upload-divider {
     display: flex;
     align-items: center;
@@ -2286,7 +2281,7 @@ body {
     background: var(--color-border);
 }
 
-/* ── Textarea ── */
+/* â”€â”€ Textarea â”€â”€ */
 .upload-textarea {
     width: 100%;
     resize: vertical;
@@ -2307,7 +2302,7 @@ body {
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
-/* ── Submit button ── */
+/* â”€â”€ Submit button â”€â”€ */
 .upload-submit {
     width: 100%;
     justify-content: center;
@@ -2688,7 +2683,7 @@ body {
 }
 
 /* ============================================================
-   AI ACTION BUTTONS — NoteDetailsPage
+   AI ACTION BUTTONS â€” NoteDetailsPage
    ============================================================ */
 .ai-action-btns {
     display: flex;
@@ -2745,7 +2740,7 @@ body {
 }
 
 /* ============================================================
-   RECENT AI ACTIVITY — Dashboard
+   RECENT AI ACTIVITY â€” Dashboard
    ============================================================ */
 .ai-activity-card {
     animation: dashFadeIn 0.45s 0.15s ease both;
@@ -2805,141 +2800,4 @@ body {
     color: var(--color-muted);
     flex-shrink: 0;
     white-space: nowrap;
-}
-.announcement-banner {
-    width: 100%;
-    max-width: 980px;
-    margin: 0 auto 22px;
-    padding: 16px 18px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    background: linear-gradient(135deg, #fff7ed 0%, #eef2ff 100%);
-    border: 1px solid rgba(99, 102, 241, 0.18);
-    border-radius: 18px;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-}
-
-.announcement-bell-wrap {
-    position: relative;
-    width: 46px;
-    height: 46px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 8px 18px rgba(99, 102, 241, 0.16);
-    flex: 0 0 auto;
-}
-
-.announcement-bell {
-    font-size: 24px;
-    display: inline-block;
-    animation: bellRing 1.4s ease-in-out infinite;
-    transform-origin: top center;
-}
-
-.announcement-pulse {
-    position: absolute;
-    top: 7px;
-    right: 7px;
-    width: 10px;
-    height: 10px;
-    background: #ef4444;
-    border-radius: 50%;
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
-    animation: pulseDot 1.4s infinite;
-}
-
-.announcement-content {
-    flex: 1;
-    min-width: 0;
-}
-
-.announcement-title {
-    font-size: 15px;
-    font-weight: 800;
-    color: #111827;
-    margin-bottom: 4px;
-}
-
-.announcement-text {
-    margin: 0;
-    color: #64748b;
-    font-size: 13px;
-    line-height: 1.5;
-}
-
-.announcement-link {
-    flex: 0 0 auto;
-    padding: 10px 14px;
-    border-radius: 12px;
-    background: #6366f1;
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 700;
-    text-decoration: none;
-    box-shadow: 0 10px 18px rgba(99, 102, 241, 0.2);
-}
-
-.announcement-link:hover {
-    transform: translateY(-1px);
-}
-
-@keyframes bellRing {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    10% {
-        transform: rotate(14deg);
-    }
-
-    20% {
-        transform: rotate(-12deg);
-    }
-
-    30% {
-        transform: rotate(10deg);
-    }
-
-    40% {
-        transform: rotate(-8deg);
-    }
-
-    50% {
-        transform: rotate(5deg);
-    }
-
-    60%,
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-@keyframes pulseDot {
-    0% {
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
-    }
-
-    70% {
-        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-    }
-
-    100% {
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-    }
-}
-
-@media (max-width: 768px) {
-    .announcement-banner {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .announcement-link {
-        width: 100%;
-        text-align: center;
-    }
 }

@@ -19,11 +19,7 @@ export default function StudyPlanPage() {
 
     const [notesLoading, setNotesLoading] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [savingPlan, setSavingPlan] = useState(false);
-    const [emailingPlan, setEmailingPlan] = useState(false);
-    const [savedPlanId, setSavedPlanId] = useState(null);
     const [error, setError] = useState("");
-    const [notice, setNotice] = useState("");
 
     const [notesDropdownOpen, setNotesDropdownOpen] = useState(false);
     const notesDropdownRef = useRef(null);
@@ -107,10 +103,6 @@ export default function StudyPlanPage() {
                     setSelectedNoteIds([Number(notesList[0].id)]);
                 }
             } catch (err) {
-                console.error("STUDY PLAN NOTES LOAD ERROR:", {
-                    status: err?.response?.status,
-                    body: err?.response?.data,
-                });
                 setError("Failed to load your notes.");
             } finally {
                 setNotesLoading(false);
@@ -128,7 +120,6 @@ export default function StudyPlanPage() {
 
         setLoading(true);
         setError("");
-        setNotice("");
 
         try {
             const response = await axiosClient.post("/study-plan/generate", {
@@ -142,12 +133,7 @@ export default function StudyPlanPage() {
 
             setPlan(response.data.plan || []);
             setOverview(response.data.overview || null);
-            setSavedPlanId(null);
         } catch (err) {
-            console.error("STUDY PLAN GENERATE ERROR:", {
-                status: err?.response?.status,
-                body: err?.response?.data,
-            });
             setError(
                 err?.response?.data?.message ||
                     "Failed to generate study plan."
@@ -157,9 +143,10 @@ export default function StudyPlanPage() {
         }
     };
 
-    const buildStudyPlanContent = () => {
+    const exportStudyPlan = () => {
         if (!plan || plan.length === 0) {
-            return "";
+            setError("Generate a study plan first before exporting.");
+            return;
         }
 
         const selectedNoteNames = notes
@@ -167,7 +154,7 @@ export default function StudyPlanPage() {
             .map((note) => getNoteTitle(note))
             .join(", ");
 
-        return [
+        const content = [
             "StudyFlow - AI Study Plan",
             "==========================",
             "",
@@ -192,15 +179,6 @@ export default function StudyPlanPage() {
                 "",
             ]),
         ].join("\n");
-    };
-
-    const exportStudyPlan = () => {
-        if (!plan || plan.length === 0) {
-            setError("Generate a study plan first before exporting.");
-            return;
-        }
-
-        const content = buildStudyPlanContent();
 
         const blob = new Blob([content], {
             type: "text/plain;charset=utf-8",
@@ -218,74 +196,6 @@ export default function StudyPlanPage() {
         URL.revokeObjectURL(url);
     };
 
-    const saveStudyPlan = async () => {
-        if (!plan || plan.length === 0) {
-            setError("Generate a study plan first before saving.");
-            return null;
-        }
-
-        setSavingPlan(true);
-        setError("");
-        setNotice("");
-
-        try {
-            const response = await axiosClient.post("/study-plans", {
-                title: overview?.note_title
-                    ? `Study plan for ${overview.note_title}`
-                    : "Saved study plan",
-                content: buildStudyPlanContent(),
-                metadata: {
-                    overview,
-                    selected_note_ids: selectedNoteIds,
-                },
-            });
-
-            const planId = response.data?.data?.plan?.id;
-            setSavedPlanId(planId || null);
-            setNotice("Study plan saved.");
-            return planId || null;
-        } catch (err) {
-            console.error("STUDY PLAN SAVE ERROR:", {
-                status: err?.response?.status,
-                body: err?.response?.data,
-            });
-            setError(err?.response?.data?.message || "Failed to save study plan.");
-            return null;
-        } finally {
-            setSavingPlan(false);
-        }
-    };
-
-    const emailStudyPlan = async () => {
-        if (!plan || plan.length === 0) {
-            setError("Generate a study plan first before emailing.");
-            return;
-        }
-
-        setEmailingPlan(true);
-        setError("");
-        setNotice("");
-
-        try {
-            const planId = savedPlanId || (await saveStudyPlan());
-
-            if (!planId) {
-                return;
-            }
-
-            await axiosClient.post(`/study-plans/${planId}/send-email`);
-            setNotice("Study plan email sent.");
-        } catch (err) {
-            console.error("STUDY PLAN EMAIL ERROR:", {
-                status: err?.response?.status,
-                body: err?.response?.data,
-            });
-            setError(err?.response?.data?.message || "Failed to email study plan.");
-        } finally {
-            setEmailingPlan(false);
-        }
-    };
-
     return (
         <div className="study-plan-page">
             <div className="study-plan-header">
@@ -299,7 +209,6 @@ export default function StudyPlanPage() {
             </div>
 
             {error && <div className="study-plan-error">{error}</div>}
-            {notice && <div className="study-plan-error" style={{ background: "#ecfdf5", color: "#166534" }}>{notice}</div>}
 
             <div className="study-plan-grid">
                 <section className="study-plan-card">
@@ -316,7 +225,7 @@ export default function StudyPlanPage() {
                             }
                         >
                             <span>{selectedNotesText}</span>
-                            <span>{notesDropdownOpen ? "▴" : "▾"}</span>
+                            <span>{notesDropdownOpen ? "â–´" : "â–¾"}</span>
                         </button>
 
                         {notesDropdownOpen && (
@@ -459,7 +368,7 @@ export default function StudyPlanPage() {
                         </p>
 
                         <p>
-                            {hoursPerDay} hours/day • {difficulty} difficulty •
+                            {hoursPerDay} hours/day â€¢ {difficulty} difficulty â€¢
                             Focus: {focusMode}
                         </p>
 
@@ -507,29 +416,13 @@ export default function StudyPlanPage() {
                 <div className="study-plan-result-header">
                     <h2>Your AI Study Plan</h2>
 
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button
-                            type="button"
-                            onClick={exportStudyPlan}
-                            disabled={plan.length === 0}
-                        >
-                            Export Plan
-                        </button>
-                        <button
-                            type="button"
-                            onClick={saveStudyPlan}
-                            disabled={plan.length === 0 || savingPlan}
-                        >
-                            {savingPlan ? "Saving..." : "Save Plan"}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={emailStudyPlan}
-                            disabled={plan.length === 0 || emailingPlan}
-                        >
-                            {emailingPlan ? "Sending..." : "Email Plan"}
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        onClick={exportStudyPlan}
+                        disabled={plan.length === 0}
+                    >
+                        Export Plan
+                    </button>
                 </div>
 
                 {plan.length === 0 ? (

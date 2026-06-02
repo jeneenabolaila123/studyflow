@@ -1,4 +1,4 @@
-﻿const API_BASE_URL = "http://127.0.0.1:8000/api/local-ai";
+const API_BASE_URL = "http://127.0.0.1:8000/api/local-ai";
 
 function getAuthHeaders(json = false) {
     const token =
@@ -35,28 +35,9 @@ export async function summarizeText(inputText) {
     const data = await response.json();
 
     if (!response.ok || !data.success) {
-        throw new Error(data.message || data.error || "Failed to summarize text");
-    }
-
-    return data;
-}
-
-export async function summarizeFile(file) {
-    const formData = new FormData();
-    formData.append("uploaded_file", file);
-    formData.append("title", `Summary of ${file.name}`);
-
-    const response = await fetch(`${API_BASE_URL}/summary/file`, {
-        method: "POST",
-        headers: getAuthHeaders(false),
-        credentials: "include",
-        body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.success) {
-        throw new Error(data.message || data.error || "Failed to summarize file");
+        throw new Error(
+            data.message || data.error || "Failed to summarize text"
+        );
     }
 
     return data;

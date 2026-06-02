@@ -36,6 +36,9 @@ class LocalAiController extends Controller
 
     public function summarizeText(Request $request): JsonResponse
     {
+        set_time_limit(0);
+        ini_set('max_execution_time', '0');
+
         $validated = $request->validate([
             'text' => ['required', 'string', 'min:5'],
             'title' => ['nullable', 'string', 'max:255'],
@@ -43,13 +46,11 @@ class LocalAiController extends Controller
         ]);
 
         try {
-            $prompt = $this->buildDetailedSummaryPrompt($validated['text']);
-
             $response = Http::timeout(1200)
                 ->connectTimeout(10)
                 ->acceptJson()
-                ->post($this->fastApiUrl . '/conversation', [
-                    'human_input' => $prompt,
+                ->post($this->fastApiUrl . '/summarize', [
+                    'text' => $validated['text'],
                 ]);
 
             if (!$response->successful()) {
@@ -63,7 +64,10 @@ class LocalAiController extends Controller
 
             $data = $response->json() ?? [];
 
-            $summary = $this->extractSummaryFromResponse($data);
+            $summary = $data['output']
+                ?? $data['summary']
+                ?? $data['result']
+                ?? null;
 
             if (!$summary || trim($summary) === '') {
                 return response()->json([
@@ -72,8 +76,6 @@ class LocalAiController extends Controller
                     'raw' => $data,
                 ], 502);
             }
-
-            $summary = $this->cleanSummaryText($summary);
 
             $saved = $this->saveSummarySafely(
                 $request,
@@ -140,7 +142,10 @@ class LocalAiController extends Controller
 
             $data = $response->json() ?? [];
 
-            $summary = $this->extractSummaryFromResponse($data);
+            $summary = $data['result']
+                ?? $data['output']
+                ?? $data['summary']
+                ?? null;
 
             if (!$summary || trim($summary) === '') {
                 return response()->json([
@@ -149,8 +154,6 @@ class LocalAiController extends Controller
                     'raw' => $data,
                 ], 502);
             }
-
-            $summary = $this->cleanSummaryText($summary);
 
             $title = $validated['title']
                 ?? ('Summary of ' . $file->getClientOriginalName());
@@ -203,68 +206,6 @@ class LocalAiController extends Controller
             'success' => false,
             'message' => 'Quiz file endpoint is not connected in this FastAPI version yet.',
         ], 501);
-    }
-
-    private function buildDetailedSummaryPrompt(string $text): string
-    {
-        return <<<PROMPT
-You are StudyFlow, an academic study assistant.
-
-Use ONLY the provided content.
-Do NOT add outside information.
-Create a detailed exam revision summary.
-The summary must be useful for a student preparing for an exam.
-Do not give a very short answer unless the input text is very short.
-
-Return the answer in this exact structure:
-
-### Main Ideas
-- Write 5 to 7 clear bullet points.
-- Explain the central concepts, not only keywords.
-
-### Key Facts
-- Write 6 to 10 important facts.
-- Include definitions, classifications, causes, examples, steps, rules, or comparisons if they appear in the content.
-
-### Important Details
-- Write 8 to 12 detailed bullet points.
-- Explain relationships between ideas.
-- Mention examples from the content when available.
-- Avoid generic sentences.
-
-### Examples or Evidence Mentioned
-- Write 3 to 6 examples, details, or evidence points from the content.
-- If no examples exist, write: Not clearly mentioned in the provided content.
-
-### Exam Revision Notes
-- Write 6 to 10 useful exam notes.
-- Focus on what the student should remember for an exam.
-- Make the notes clear and practical.
-
-Content:
-{$text}
-PROMPT;
-    }
-
-    private function extractSummaryFromResponse(array $data): ?string
-    {
-        return $data['output']
-            ?? $data['result']
-            ?? $data['summary']
-            ?? $data['response']
-            ?? $data['text']
-            ?? null;
-    }
-
-    private function cleanSummaryText(string $summary): string
-    {
-        $summary = trim($summary);
-
-        $summary = preg_replace('/<think>.*?<\/think>/is', '', $summary);
-        $summary = preg_replace('/^\s*```(?:markdown|md|text)?\s*/i', '', $summary);
-        $summary = preg_replace('/\s*```\s*$/', '', $summary);
-
-        return trim($summary);
     }
 
     private function saveSummarySafely(

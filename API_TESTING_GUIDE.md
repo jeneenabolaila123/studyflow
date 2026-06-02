@@ -2,7 +2,7 @@
 
 Complete guide for testing all AI endpoints with examples.
 
-## 🔑 Getting Your Bearer Token
+## ðŸ”‘ Getting Your Bearer Token
 
 1. **Register/Login to get token:**
 
@@ -25,7 +25,7 @@ Authorization: Bearer your_token_here
 
 ---
 
-## 📤 1. File Upload
+## ðŸ“¤ 1. File Upload
 
 ### Upload PDF/DOCX/Image
 
@@ -52,7 +52,7 @@ curl -X POST http://localhost:8000/api/ai/upload \
 
 ---
 
-## 📝 2. Summarization
+## ðŸ“ 2. Summarization
 
 ### Summarize as Bullet Points
 
@@ -97,7 +97,7 @@ curl -X POST http://localhost:8000/api/ai/summarize \
     "success": true,
     "message": "Summary generated successfully",
     "data": {
-        "summary": "• Key point 1\n• Key point 2\n• Key point 3",
+        "summary": "â€¢ Key point 1\nâ€¢ Key point 2\nâ€¢ Key point 3",
         "format": "bullet_points",
         "model": "mixtral-8x7b-32768",
         "input_length": 5234
@@ -107,7 +107,7 @@ curl -X POST http://localhost:8000/api/ai/summarize \
 
 ---
 
-## 🎯 3. Quiz Generation
+## ðŸŽ¯ 3. Quiz Generation
 
 ### Generate MCQ Quiz
 
@@ -151,7 +151,7 @@ curl -X POST http://localhost:8000/api/ai/generate-quiz \
 
 ---
 
-## 💬 4. Chat System
+## ðŸ’¬ 4. Chat System
 
 ### 4.1 Start a Chat Session
 
@@ -296,7 +296,7 @@ curl -X DELETE http://localhost:8000/api/ai/chat/1 \
 
 ---
 
-## 🔴 Error Responses
+## ðŸ”´ Error Responses
 
 ### 401 - Unauthorized (Missing/Invalid Token)
 
@@ -339,7 +339,7 @@ curl -X DELETE http://localhost:8000/api/ai/chat/1 \
 
 ---
 
-## 🧪 Testing Workflow
+## ðŸ§ª Testing Workflow
 
 ### Complete Test Workflow
 
@@ -390,7 +390,7 @@ curl -s -X POST http://localhost:8000/api/ai/chat/$CHAT_ID/message \
 
 ---
 
-## 📦 Postman Collection
+## ðŸ“¦ Postman Collection
 
 Save as `AI-API.postman_collection.json`:
 
@@ -452,7 +452,7 @@ Save as `AI-API.postman_collection.json`:
 
 ---
 
-## 🚀 Quick PHP Script Test
+## ðŸš€ Quick PHP Script Test
 
 ```php
 <?php
@@ -493,7 +493,7 @@ echo json_encode($result, JSON_PRETTY_PRINT);
 
 ---
 
-## ✅ Testing Checklist
+## âœ… Testing Checklist
 
 - [ ] Upload PDF file successfully
 - [ ] Generate bullet point summary
@@ -513,4 +513,4 @@ echo json_encode($result, JSON_PRETTY_PRINT);
 
 ---
 
-Built with ❤️ for testing success!
+Built with â¤ï¸ for testing success!

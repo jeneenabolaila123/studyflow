@@ -37,14 +37,4 @@ class Note extends Model
     {
         return $this->belongsTo(User::class);
     }
-
-    public function summaries()
-    {
-        return $this->hasMany(Summary::class);
-    }
-
-    public function latestSummary()
-    {
-        return $this->hasOne(Summary::class)->latestOfMany();
-    }
 }

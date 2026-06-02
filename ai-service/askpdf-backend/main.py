@@ -297,7 +297,7 @@ ANSWER:
 
 
 def greeting_answer() -> str:
-    return "Hi! Ask me anything about this PDF/note and I’ll answer using its content."
+    return "Hi! Ask me anything about this PDF/note and Iâ€™ll answer using its content."
 
 
 def no_content_answer() -> str:

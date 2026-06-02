@@ -168,24 +168,25 @@ class NoteAiController extends Controller
          * Do NOT send a big prompt here, because pdf-rag-backend already builds
          * the grounded prompt using the PDF chunks.
          */
-     $answerResponse = Http::connectTimeout(10)
-    ->timeout(420)
-    ->acceptJson()
-    ->post($this->askPdfBaseUrl . '/generate', [
-        'question' => $standaloneQuestion,
-        'operation_id' => $docId,
-        'operationId' => $docId,
-        'history' => $history,
-    ]);
+        $answerResponse = Http::connectTimeout(10)
+            ->timeout(420)
+            ->post($this->askPdfBaseUrl . '/ask', [
+                'doc_id' => $docId,
+                'question' => $standaloneQuestion,
+                'query' => $standaloneQuestion,
+                'message' => $standaloneQuestion,
+                'history' => $history,
+            ]);
 
         if (!$answerResponse->successful()) {
-      Log::error('PDF-RAG /generate failed', [
-    'note_id' => $note->id,
-    'operation_id' => $docId,
-    'url' => $this->askPdfBaseUrl . '/generate',
-    'status' => $answerResponse->status(),
-    'body' => $answerResponse->body(),
-]);
+            Log::error('PDF-RAG /ask failed', [
+                'note_id' => $note->id,
+                'doc_id' => $docId,
+                'url' => $this->askPdfBaseUrl . '/ask',
+                'status' => $answerResponse->status(),
+                'body' => $answerResponse->body(),
+            ]);
+
             return response()->json([
                 'message' => 'Ask PDF failed while generating the answer.',
                 'error' => $answerResponse->json('detail') ?? $answerResponse->body(),
@@ -205,7 +206,7 @@ class NoteAiController extends Controller
         $answer = trim((string) $answer);
 
         if ($answer === '') {
-            $answer = 'I couldn’t find this information in the uploaded PDF/note. Could you ask about something shown in the material?';
+            $answer = 'I couldnâ€™t find this information in the uploaded PDF/note. Could you ask about something shown in the material?';
         }
 
         if ($answer !== '') {
@@ -390,9 +391,9 @@ ANSWER:
             'good evening',
             'good afternoon',
             'salam',
-            'مرحبا',
-            'اهلا',
-            'أهلا',
+            'Ù…Ø±Ø­Ø¨Ø§',
+            'Ø§Ù‡Ù„Ø§',
+            'Ø£Ù‡Ù„Ø§',
         ];
 
         return in_array($lowerQuestion, $greetings, true);
@@ -429,7 +430,7 @@ ANSWER:
 
     private function greetingAnswer(): string
     {
-        return 'Hi! Ask me anything about this PDF/note and I’ll answer using its content.';
+        return 'Hi! Ask me anything about this PDF/note and Iâ€™ll answer using its content.';
     }
 
     private function rewriteShortFollowUp(string $question, array $history): string
@@ -448,9 +449,9 @@ ANSWER:
             'details',
             'tell me more',
             'more details',
-            'وضح',
-            'اشرح',
-            'كمل',
+            'ÙˆØ¶Ø­',
+            'Ø§Ø´Ø±Ø­',
+            'ÙƒÙ…Ù„',
             'can you tell me more',
             'can you tell me more about this note',
             'tell me more about this note',

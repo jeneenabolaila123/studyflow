@@ -2,9 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import Spinner, { PageSpinner } from "../components/Spinner.jsx";
-import StudySheetSummaryCard, {
-    formatStudySheetAsText,
-} from "../components/StudySheetSummaryCard.jsx";
 
 function ArrowLeftIcon() {
     return (
@@ -155,12 +152,7 @@ export default function SummaryDetailsPage() {
 
     const handleCopy = async () => {
         if (!summary) return;
-        const ok = await copyToClipboard(
-            formatStudySheetAsText(summary.summary_text, {
-                title: summary.title,
-                sourceType: summary.source_type,
-            })
-        );
+        const ok = await copyToClipboard(summary.summary_text);
         if (!ok) {
             alert("Copy failed.");
             return;
@@ -271,18 +263,16 @@ export default function SummaryDetailsPage() {
                         </div>
                     </div>
 
-                    <StudySheetSummaryCard
-                        summary={summary.summary_text}
-                        title={summary.title}
-                        sourceLabel={
-                            (summary.source_type || "").toUpperCase() || "TEXT"
-                        }
-                        generatedAt={
-                            summary.created_at
-                                ? `Saved ${formatDateTime(summary.created_at)}`
-                                : ""
-                        }
-                    />
+                    <div
+                        style={{
+                            whiteSpace: "pre-wrap",
+                            lineHeight: 1.7,
+                            color: "var(--color-text)",
+                            fontSize: 14.5,
+                        }}
+                    >
+                        {summary.summary_text}
+                    </div>
                 </div>
             )}
         </div>

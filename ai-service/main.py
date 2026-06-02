@@ -120,7 +120,7 @@ async def shutdown_event() -> None:
 def normalize_unicode(text: str) -> str:
     text = unicodedata.normalize("NFKC", text)
     text = text.replace("\ufeff", "")
-    text = text.replace("ﬁ", "fi").replace("ﬂ", "fl")
+    text = text.replace("ï¬", "fi").replace("ï¬‚", "fl")
     return text
 
 
@@ -138,7 +138,7 @@ def normalize_whitespace(text: str) -> str:
 
 
 def strip_page_noise(line: str) -> str:
-    line = line.strip(" -–—•▪◦➢*\t")
+    line = line.strip(" -â€“â€”â€¢â–ªâ—¦âž¢*\t")
     line = re.sub(r"\s+", " ", line).strip()
     line = re.sub(r"\bPage\s+\d+(\s+of\s+\d+)?\b", "", line, flags=re.I)
     line = re.sub(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b", "", line)

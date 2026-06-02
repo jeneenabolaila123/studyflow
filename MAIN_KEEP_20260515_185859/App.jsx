@@ -1,4 +1,4 @@
-﻿import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import MainPage from "./pages/MainPage.jsx";
 import FeedbackPage from "./pages/FeedbackPage";
@@ -106,4 +106,3 @@ function App() {
 }
 
 export default App;
-

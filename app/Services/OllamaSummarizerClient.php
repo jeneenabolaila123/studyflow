@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Services;
 
@@ -15,7 +15,7 @@ class OllamaSummarizerClient
 
     private function timeout(): int
     {
-        return (int) config('services.ollama_summarizer.timeout', 1200);
+        return (int) config('services.ollama_summarizer.timeout', 1800);
     }
 
     private function connectTimeout(): int

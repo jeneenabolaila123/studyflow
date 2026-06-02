@@ -1,48 +1,43 @@
-# Studyflow
+# StudyFlow Platform
 
-Studyflow is a Laravel API plus React/Vite frontend for uploading study material and generating local AI summaries through Ollama.
+StudyFlow is a Laravel API and React/Vite web platform that helps students upload study materials and use local AI tools to study more effectively. The platform supports document upload, AI summaries, quiz generation, Ask PDF, study plans, and personalized recommendations.
 
-## AI Summary Flow
+The system uses local AI through Ollama, so the main AI features can run locally without depending on external cloud AI APIs.
 
-- Supported uploads: PDF, DOCX, TXT, PPTX
-- Local model: `phi3:mini`
-- Ollama endpoint: `POST http://localhost:11434/api/generate`
-- Summary formats: bullet points, simple paragraph, detailed explanation
-- Large documents are split into chunks, summarized sequentially, then merged into a final summary
+## Main Features
 
-The summarizer is designed to stay grounded in the uploaded text. Prompts explicitly tell the model to avoid inventing information and to keep explanations clear for students.
+- Upload study materials such as PDF and TXT files
+- Generate AI summaries from uploaded content
+- Choose different summary styles:
+  - Bullet points
+  - Simple paragraph
+  - Detailed explanation
+- Ask questions about uploaded PDFs using Ask PDF
+- Generate quizzes from uploaded study materials
+- Use custom prompts to ask the AI to generate quizzes, explanations, or other study support
+- Create study plans to help students organize their learning
+- Get study recommendations based on uploaded notes and learning needs
+- View uploaded notes and reuse extracted text for future AI features
+- Process large documents by splitting them into chunks, summarizing them step by step, and merging the results into a final answer
+## Backend Notes
+Laravel is used as the main backend API.
+Extracted document text is saved in the notes table so it can be reused by summaries, quizzes, Ask PDF, recommendations, and study plans.
+The backend uses PDF parsing to extract text from uploaded study materials.
+Quiz, chat, summary, recommendation, and study plan features reuse the same extracted note content when possible.
+Large files are handled by chunking the text before sending it to the local AI model.
+## Frontend Notes
+React with Vite is used for the frontend.
+The upload form supports study material uploads.
+The note details page allows students to view uploaded content and use AI tools.
+The interface includes loading states, disabled buttons while AI is running, error messages, and scrollable result panels.
+Students can interact with the AI by using built-in buttons or by writing their own prompts.
 
-## Local Configuration
+## AI and Local Model
 
-Add these values to your `.env` if you need to override the defaults:
+StudyFlow uses Ollama to run local AI models.
+
+Default local model:
 
 ```env
+OLLAMA_MODEL=llama3.2:3b
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=phi3:mini
-OLLAMA_TIMEOUT=600
-OLLAMA_CONNECT_TIMEOUT=10
-OLLAMA_CHUNK_SIZE=6000
-```
-
-## Backend Notes
-
-- Extracted document text is persisted on the `notes` table for reuse by future AI features.
-- The backend uses `smalot/pdfparser` for PDF parsing and native Office XML extraction for DOCX and PPTX files.
-- `quiz` and `chat` endpoints now reuse the same extracted note content path as summarization.
-
-## Frontend Notes
-
-- Upload form accepts all supported file types.
-- Note details page lets the user choose a summary format before generation.
-- The UI includes a thinking indicator, disabled actions while AI is running, clear error states, and a scrollable summary panel.
-
-## Verification
-
-The current implementation has been verified with:
-
-```bash
-php artisan migrate
-php artisan test
-cd frontend && npm run lint
-cd frontend && npm run build
-```

@@ -153,7 +153,7 @@ export default function Workspace() {
   };
 
   if (loading) {
-    return <div className="card">Loading workspace…</div>;
+    return <div className="card">Loading workspaceâ€¦</div>;
   }
 
   if (!note) {
@@ -221,7 +221,7 @@ export default function Workspace() {
             className="textarea"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Write your own notes, reminders, and revision points…"
+            placeholder="Write your own notes, reminders, and revision pointsâ€¦"
             disabled={saving}
           />
         </div>
@@ -230,7 +230,7 @@ export default function Workspace() {
 
         <div className="actions" style={{ marginTop: 14, flexWrap: 'wrap' }}>
           <button className="button buttonAccent" type="button" onClick={save} disabled={saving || !title.trim()}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Savingâ€¦' : 'Save'}
           </button>
           <Link className="link" to="/dashboard">
             Back to dashboard

@@ -43,7 +43,7 @@ class AiController extends Controller
             ];
 
             $fastApiResponse = Http::connectTimeout(10)
-                ->timeout(300)
+                ->timeout(3600)
                 ->post($this->askPdfBaseUrl() . '/generate', $payload);
 
             if (! $fastApiResponse->successful()) {
@@ -441,7 +441,7 @@ class AiController extends Controller
             $pythonUrl = env('SUMMARY_API_URL', 'http://127.0.0.1:8002/summarize');
 
             $response = Http::connectTimeout(10)
-                ->timeout(300)
+                ->timeout(3600)
                 ->post($pythonUrl, [
                     'human_input' => $text,
                     'text' => $text,
@@ -775,7 +775,7 @@ class AiController extends Controller
 
             if ($note->source_type === 'text' || !empty($note->text_content)) {
                 $response = Http::connectTimeout(10)
-                    ->timeout(300)
+                    ->timeout(3600)
                     ->post($pythonUrl, [
                         'human_input' => $note->text_content ?: $note->description ?: '',
                     ]);
@@ -785,7 +785,7 @@ class AiController extends Controller
 
                 if ($disk->exists($storedPath)) {
                     $response = Http::connectTimeout(10)
-                        ->timeout(300)
+                        ->timeout(3600)
                         ->attach('file', file_get_contents($disk->path($storedPath)), basename($storedPath))
                         ->post($pythonUrl);
                 }
@@ -805,7 +805,7 @@ class AiController extends Controller
 
                     return ApiResponse::success([
                         'type' => 'summary',
-                        'reply' => $summaryText . "\n\n✨ _Saved to MySummaries_",
+                        'reply' => $summaryText . "\n\nâœ¨ _Saved to MySummaries_",
                         'summary_id' => $saved->id,
                         'saved_to_my_summaries' => true,
                     ], 'Summary generated and saved.');

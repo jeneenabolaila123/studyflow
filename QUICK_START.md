@@ -1,4 +1,4 @@
-# 🚀 Quick Start Guide - Groq AI Module
+# ðŸš€ Quick Start Guide - Groq AI Module
 
 Get the AI module running in 5 minutes!
 
@@ -56,7 +56,7 @@ If successful, you'll get extracted text!
 
 ---
 
-## 📚 Available Endpoints Summary
+## ðŸ“š Available Endpoints Summary
 
 | Method | Endpoint                    | Purpose               |
 | ------ | --------------------------- | --------------------- |
@@ -71,7 +71,7 @@ If successful, you'll get extracted text!
 
 ---
 
-## 🎯 Common Use Cases
+## ðŸŽ¯ Common Use Cases
 
 ### 1. Summarize Uploaded PDF
 
@@ -176,7 +176,7 @@ console.log("Assistant:", reply);
 
 ---
 
-## 🐛 Troubleshooting
+## ðŸ› Troubleshooting
 
 ### "Groq API key not configured"
 
@@ -212,7 +212,7 @@ php artisan migrate --step
 
 ---
 
-## 📊 Key Files Created
+## ðŸ“Š Key Files Created
 
 | File                                            | Purpose            |
 | ----------------------------------------------- | ------------------ |
@@ -228,7 +228,7 @@ php artisan migrate --step
 
 ---
 
-## 🔒 Security Checklist
+## ðŸ”’ Security Checklist
 
 - [ ] API key in `.env` (not in code)
 - [ ] GROQ_API_KEY not in git repo
@@ -239,18 +239,18 @@ php artisan migrate --step
 
 ---
 
-## 🎓 Next Steps
+## ðŸŽ“ Next Steps
 
-1. ✅ Set up API key
-2. ✅ Run migrations
-3. ✅ Test endpoints with curl
-4. ✅ Build frontend UI
-5. ✅ Integrate with your app
-6. ✅ Deploy to production
+1. âœ… Set up API key
+2. âœ… Run migrations
+3. âœ… Test endpoints with curl
+4. âœ… Build frontend UI
+5. âœ… Integrate with your app
+6. âœ… Deploy to production
 
 ---
 
-## 📖 Detailed Docs
+## ðŸ“– Detailed Docs
 
 - `AI_MODULE_GUIDE.md` - Complete feature documentation
 - `API_TESTING_GUIDE.md` - Testing API endpoints
@@ -258,7 +258,7 @@ php artisan migrate --step
 
 ---
 
-## ❓ Need Help?
+## â“ Need Help?
 
 Check the logs:
 
@@ -274,10 +274,10 @@ APP_DEBUG=true
 
 ---
 
-## 🎉 You're Ready!
+## ðŸŽ‰ You're Ready!
 
-Your AI module is now ready to use. Start building amazing features! 🚀
+Your AI module is now ready to use. Start building amazing features! ðŸš€
 
 ---
 
-Built with ❤️ for your graduation project!
+Built with â¤ï¸ for your graduation project!

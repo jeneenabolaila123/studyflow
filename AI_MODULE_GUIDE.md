@@ -2,7 +2,7 @@
 
 This document explains the complete AI-powered module built with Laravel and Groq API.
 
-## 📋 Features
+## ðŸ“‹ Features
 
 1. **PDF/Document Summarization** - Extract and summarize text from PDFs, DOCx, and images
 2. **Chat System** - Multi-message context-aware chatbot with persistent history
@@ -12,38 +12,38 @@ This document explains the complete AI-powered module built with Laravel and Gro
 
 ---
 
-## 🗂️ Project Structure
+## ðŸ—‚ï¸ Project Structure
 
 ```
 app/
-├── Models/
-│   ├── Chat.php                 # Chat session model
-│   └── Message.php              # Chat message model
-├── Services/AI/
-│   ├── GroqAiService.php       # Main AI service (Groq API integration)
-│   └── TextUtility.php          # Text processing utilities
-├── Http/Controllers/Api/
-│   └── GroqAiController.php     # AI endpoints controller
-├── Http/Middleware/
-│   └── ChatAuthMiddleware.php   # Chat access validation
-└── Support/
-    └── ApiResponse.php          # Standardized API responses
+â”œâ”€â”€ Models/
+â”‚   â”œâ”€â”€ Chat.php                 # Chat session model
+â”‚   â””â”€â”€ Message.php              # Chat message model
+â”œâ”€â”€ Services/AI/
+â”‚   â”œâ”€â”€ GroqAiService.php       # Main AI service (Groq API integration)
+â”‚   â””â”€â”€ TextUtility.php          # Text processing utilities
+â”œâ”€â”€ Http/Controllers/Api/
+â”‚   â””â”€â”€ GroqAiController.php     # AI endpoints controller
+â”œâ”€â”€ Http/Middleware/
+â”‚   â””â”€â”€ ChatAuthMiddleware.php   # Chat access validation
+â””â”€â”€ Support/
+    â””â”€â”€ ApiResponse.php          # Standardized API responses
 
 database/
-├── migrations/
-│   ├── 2026_04_02_000001_create_chats_table.php
-│   └── 2026_04_02_000002_create_messages_table.php
+â”œâ”€â”€ migrations/
+â”‚   â”œâ”€â”€ 2026_04_02_000001_create_chats_table.php
+â”‚   â””â”€â”€ 2026_04_02_000002_create_messages_table.php
 
 config/
-└── groq.php                     # Groq API configuration
+â””â”€â”€ groq.php                     # Groq API configuration
 
 routes/
-└── api.php                      # API endpoints definitions
+â””â”€â”€ api.php                      # API endpoints definitions
 ```
 
 ---
 
-## 🚀 Setup Instructions
+## ðŸš€ Setup Instructions
 
 ### 1. **Get Groq API Key**
 
@@ -91,7 +91,7 @@ public function user(): BelongsTo
 
 ---
 
-## 📡 API Endpoints
+## ðŸ“¡ API Endpoints
 
 ### Authentication
 
@@ -304,7 +304,7 @@ DELETE /api/ai/chat/{chatId}
 
 ---
 
-## 💾 Database Schema
+## ðŸ’¾ Database Schema
 
 ### chats table
 
@@ -336,7 +336,7 @@ CREATE TABLE messages (
 
 ---
 
-## 🔧 How It Works
+## ðŸ”§ How It Works
 
 ### 1. **Text Summarization**
 
@@ -372,7 +372,7 @@ CREATE TABLE messages (
 
 ---
 
-## 🎯 Best Practices Implemented
+## ðŸŽ¯ Best Practices Implemented
 
 1. **Service Layer Architecture**
     - `GroqAiService` handles all AI logic
@@ -401,7 +401,7 @@ CREATE TABLE messages (
 
 ---
 
-## 📝 Example Usage
+## ðŸ“ Example Usage
 
 ### Frontend Integration (JavaScript)
 
@@ -491,7 +491,7 @@ const {
 
 ---
 
-## 🐛 Troubleshooting
+## ðŸ› Troubleshooting
 
 ### "Groq API key not configured"
 
@@ -516,7 +516,7 @@ const {
 
 ---
 
-## 📊 Performance Tips
+## ðŸ“Š Performance Tips
 
 1. **Text Limiting**
     - Default limit: 12,000 characters
@@ -535,7 +535,7 @@ const {
 
 ---
 
-## 🔐 Security Considerations
+## ðŸ” Security Considerations
 
 1. **API Key Protection**
     - Never commit `.env` to version control
@@ -554,7 +554,7 @@ const {
 
 ---
 
-## 📚 Resources
+## ðŸ“š Resources
 
 - [Groq API Documentation](https://console.groq.com/docs)
 - [Laravel Eloquent](https://laravel.com/docs/eloquent)
@@ -562,7 +562,7 @@ const {
 
 ---
 
-## ✅ Checklist
+## âœ… Checklist
 
 - [ ] Add `GROQ_API_KEY` to `.env`
 - [ ] Run migrations: `php artisan migrate`
@@ -577,4 +577,4 @@ const {
 
 ---
 
-Built with ❤️ for your graduation project!
+Built with â¤ï¸ for your graduation project!

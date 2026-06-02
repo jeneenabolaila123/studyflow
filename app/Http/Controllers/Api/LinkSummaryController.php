@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -69,8 +68,9 @@ class LinkSummaryController extends Controller
         $processEnv = [
             'SystemRoot' => getenv('SystemRoot') ?: 'C:\\Windows',
             'WINDIR' => getenv('WINDIR') ?: 'C:\\Windows',
-
-            // Important: pass Deno path to child process
+            'LINK_FFMPEG_LOCATION' => env('LINK_FFMPEG_LOCATION', 'C:\Users\User\Desktop\ffmpeg_extracted\ffmpeg-8.1-essentials_build\bin\ffmpeg.exe'),
+            'GROQ_API_KEY' => env('GROQ_API_KEY', ''),
+'GROQ_WHISPER_MODEL' => env('GROQ_WHISPER_MODEL', 'whisper-large-v3-turbo'),            'LINK_ALWAYS_TRANSCRIBE_AUDIO' => env('LINK_ALWAYS_TRANSCRIBE_AUDIO') ? 'true' : 'false',            // Important: pass Deno path to child process
             'Path' => $currentPath,
             'PATH' => $currentPath,
 
@@ -142,6 +142,7 @@ class LinkSummaryController extends Controller
             'summary' => $data['summary'],
             'title' => $data['title'] ?? null,
             'transcript' => $data['transcript'] ?? null,
+            'transcript_source' => $data['transcript_source'] ?? null,
             'type' => $data['type'] ?? null,
             'url' => $data['url'] ?? $url,
             'processing_time_seconds' => $data['processing_time_seconds'] ?? null,

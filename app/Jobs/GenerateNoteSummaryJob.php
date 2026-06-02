@@ -19,7 +19,7 @@ class GenerateNoteSummaryJob implements ShouldQueue
     use SerializesModels;
 
     public int $tries = 3;
-    public int $timeout = 1200;
+    public int $timeout = 1800;
 
     public function __construct(
         public readonly int $noteId,

@@ -132,7 +132,7 @@ def is_about_question(question: str) -> bool:
 
 def is_greeting(question: str) -> bool:
     q = question.strip().lower()
-    return q in ["hi", "hello", "hey", "salam", "مرحبا", "اهلا", "أهلا"]
+    return q in ["hi", "hello", "hey", "salam", "Ù…Ø±Ø­Ø¨Ø§", "Ø§Ù‡Ù„Ø§", "Ø£Ù‡Ù„Ø§"]
 
 
 def select_relevant_chunks(question: str, chunks: List[Dict[str, Any]], limit: int = 8) -> List[Dict[str, Any]]:

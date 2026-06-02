@@ -24,7 +24,7 @@ return new class extends Migration
 
             $table->string('title')->nullable();
 
-            // هون منخزن summary للمحادثة القديمة
+            // Ù‡ÙˆÙ† Ù…Ù†Ø®Ø²Ù† summary Ù„Ù„Ù…Ø­Ø§Ø¯Ø«Ø© Ø§Ù„Ù‚Ø¯ÙŠÙ…Ø©
             $table->longText('summary')->nullable();
 
             $table->unsignedInteger('messages_count')->default(0);

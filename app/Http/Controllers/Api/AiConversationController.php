@@ -105,7 +105,7 @@ class AiConversationController extends Controller
                 'last_message_at' => now(),
             ];
 
-            // أول رسالة user بتصير title للشات
+            // Ø£ÙˆÙ„ Ø±Ø³Ø§Ù„Ø© user Ø¨ØªØµÙŠØ± title Ù„Ù„Ø´Ø§Øª
             if (
                 $conversation->messages_count === 0 &&
                 $data['role'] === 'user' &&
@@ -124,23 +124,6 @@ class AiConversationController extends Controller
             'message' => 'Message saved successfully.',
             'chat_message' => $message,
         ], 201);
-    }
-    public function update(Request $request, string $uuid)
-    {
-        $conversation = $this->findUserConversation($request, $uuid);
-
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:120'],
-        ]);
-
-        $conversation->update([
-            'title' => $data['title'],
-        ]);
-
-        return response()->json([
-            'message' => 'Conversation updated successfully.',
-            'conversation' => $conversation,
-        ]);
     }
 
     public function updateSummary(Request $request, string $uuid)
