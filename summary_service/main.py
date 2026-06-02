@@ -21,17 +21,34 @@ class ConversationRequest(BaseModel):
 
 
 def ask_ollama(text: str) -> str:
-    prompt = f"""
-You are StudyFlow's local summarizer.
+  prompt = f"""
+You are an academic study assistant.
 
-Summarize the following content clearly for a student.
-Use:
-- short paragraphs
-- important points
-- simple language
-- no invented information
+Summarize the following content using ONLY the provided text.
+Do not add outside information.
+Make the summary detailed enough for exam revision.
 
-CONTENT:
+Return the answer in this exact structure:
+
+Main Ideas
+- Write 4 to 6 clear bullet points.
+- Focus on the central concepts, not only the title.
+
+Key Facts
+- Write 5 to 8 important facts from the content.
+- Include definitions, classifications, causes, examples, or steps when available.
+
+Important Details
+- Write 6 to 10 detailed bullet points.
+- Explain relationships between ideas.
+- Include examples from the text when available.
+
+Exam Revision Notes
+- Write 5 to 8 revision points.
+- Focus on what a student should remember for an exam.
+- Avoid very short or generic notes.
+
+Content:
 {text}
 """
 
@@ -42,8 +59,10 @@ CONTENT:
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": 0.2,
-                "num_predict": 700,
+                "temperature": 0.1,
+                "top_p": 0.85,
+                "num_ctx": 4096,
+                "num_predict": 2200
             },
         },
         timeout=600,

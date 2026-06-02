@@ -1,0 +1,172 @@
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\ai-tutor-backend\backend\app\services\weak_area_alignment.py:86: f"{OLLAMA_HOST}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\ai-tutor-backend\backend\app\main.py:475: f"{OLLAMA_HOST}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\ai-tutor-backend\backend\app\main.py:823: @app.post("/generate-quiz")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\ai-tutor-backend\backend\app\main.py:824: @app.post("/api/generate-quiz")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\ai-tutor-backend\backend\app\main_backup_before_nlp_validator.py:138: f"{OLLAMA_HOST}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\ai-tutor-backend\backend\app\main_backup_before_nlp_validator.py:488: @app.post("/generate-quiz/")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\ai-tutor-backend\backend\app\tf_quiz_from_prompt.py:1058: response = requests.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=timeout)
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\ai-tutor-backend_BACKUP_BEFORE_NEW\backend\app\main.py:138: f"{OLLAMA_HOST}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\ai-tutor-backend_BACKUP_BEFORE_NEW\backend\app\main.py:488: @app.post("/generate-quiz/")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\ai-tutor-backend_BACKUP_BEFORE_NEW\backend\app\tf_quiz_from_prompt.py:1058: response = requests.post(f"{OLLAMA_HOST}/api/generate", json=payload, timeout=timeout)
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices.py:18: # /process
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices.py:20: # /generate
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices.py:516: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices.py:590: for key in ["operation_id", "operationId", "document_id", "documentId", "doc_id", "docId", "file_id", "fileId"]:
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices.py:634: "routes": ["/health", "/process", "/get_chunks", "/generate", "/api/v1/query"],
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices.py:662: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices.py:703: "documentId": operation_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices.py:720: "message": "No PDF chunks found. Upload/process a PDF first.",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices.py:740: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices.py:773: @app.get("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:128: payload = {"documentId": document_id, "status": status, "progress": progress, **kwargs}
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:249: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:814: "documentId": str(metadata.get("source", "")),
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:891: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:927: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:954: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:982: document_id = data.get("documentId")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:985: raise HTTPException(status_code=400, detail="documentId is required")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:990: raise HTTPException(status_code=404, detail=f"No chunks found for documentId {document_id}")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:1016: "documentId": document_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:1030: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:1041: document_ids = data.get("documentIds", [])
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup.py:1117: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:128: payload = {"documentId": document_id, "status": status, "progress": progress, **kwargs}
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:249: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:814: "documentId": str(metadata.get("source", "")),
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:891: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:927: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:954: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:982: document_id = data.get("documentId")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:985: raise HTTPException(status_code=400, detail="documentId is required")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:990: raise HTTPException(status_code=404, detail=f"No chunks found for documentId {document_id}")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:1016: "documentId": document_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:1030: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:1041: document_ids = data.get("documentIds", [])
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_backup_before_askpdf_fix.py:1117: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_broken_line770.py:18: # /process
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_broken_line770.py:20: # /generate
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_broken_line770.py:516: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_broken_line770.py:590: for key in ["operation_id", "operationId", "document_id", "documentId", "doc_id", "docId", "file_id", "fileId"]:
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_broken_line770.py:634: "routes": ["/health", "/process", "/get_chunks", "/generate", "/api/v1/query"],
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_broken_line770.py:662: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_broken_line770.py:703: "documentId": operation_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_broken_line770.py:720: "message": "No PDF chunks found. Upload/process a PDF first.",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_broken_line770.py:740: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_broken_line770.py:772: @app.get("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:128: payload = {"documentId": document_id, "status": status, "progress": progress, **kwargs}
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:249: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:814: "documentId": str(metadata.get("source", "")),
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:891: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:927: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:954: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:982: document_id = data.get("documentId")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:985: raise HTTPException(status_code=400, detail="documentId is required")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:990: raise HTTPException(status_code=404, detail=f"No chunks found for documentId {document_id}")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:1016: "documentId": document_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:1030: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:1041: document_ids = data.get("documentIds", [])
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\Hindices_current_generic_answer.py:1117: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\main.py:266: f"{OLLAMA_HOST}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\main.py:349: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\main.py:419: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend\main.py:454: raise HTTPException(status_code=404, detail="Document not found. Upload/process the PDF first.")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices.py:18: # /process
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices.py:20: # /generate
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices.py:516: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices.py:590: for key in ["operation_id", "operationId", "document_id", "documentId", "doc_id", "docId", "file_id", "fileId"]:
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices.py:634: "routes": ["/health", "/process", "/get_chunks", "/generate", "/api/v1/query"],
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices.py:662: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices.py:703: "documentId": operation_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices.py:720: "message": "No PDF chunks found. Upload/process a PDF first.",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices.py:740: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices.py:773: @app.get("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:128: payload = {"documentId": document_id, "status": status, "progress": progress, **kwargs}
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:249: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:814: "documentId": str(metadata.get("source", "")),
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:891: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:927: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:954: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:982: document_id = data.get("documentId")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:985: raise HTTPException(status_code=400, detail="documentId is required")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:990: raise HTTPException(status_code=404, detail=f"No chunks found for documentId {document_id}")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:1016: "documentId": document_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:1030: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:1041: document_ids = data.get("documentIds", [])
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup.py:1117: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:128: payload = {"documentId": document_id, "status": status, "progress": progress, **kwargs}
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:249: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:814: "documentId": str(metadata.get("source", "")),
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:891: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:927: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:954: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:982: document_id = data.get("documentId")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:985: raise HTTPException(status_code=400, detail="documentId is required")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:990: raise HTTPException(status_code=404, detail=f"No chunks found for documentId {document_id}")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:1016: "documentId": document_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:1030: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:1041: document_ids = data.get("documentIds", [])
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_backup_before_askpdf_fix.py:1117: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_broken_line770.py:18: # /process
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_broken_line770.py:20: # /generate
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_broken_line770.py:516: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_broken_line770.py:590: for key in ["operation_id", "operationId", "document_id", "documentId", "doc_id", "docId", "file_id", "fileId"]:
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_broken_line770.py:634: "routes": ["/health", "/process", "/get_chunks", "/generate", "/api/v1/query"],
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_broken_line770.py:662: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_broken_line770.py:703: "documentId": operation_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_broken_line770.py:720: "message": "No PDF chunks found. Upload/process a PDF first.",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_broken_line770.py:740: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_broken_line770.py:772: @app.get("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:128: payload = {"documentId": document_id, "status": status, "progress": progress, **kwargs}
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:249: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:814: "documentId": str(metadata.get("source", "")),
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:891: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:927: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:954: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:982: document_id = data.get("documentId")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:985: raise HTTPException(status_code=400, detail="documentId is required")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:990: raise HTTPException(status_code=404, detail=f"No chunks found for documentId {document_id}")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:1016: "documentId": document_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:1030: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:1041: document_ids = data.get("documentIds", [])
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\Hindices_current_generic_answer.py:1117: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\main.py:266: f"{OLLAMA_HOST}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\main.py:349: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\main.py:419: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_BACKUP_BEFORE_NEW\main.py:454: raise HTTPException(status_code=404, detail="Document not found. Upload/process the PDF first.")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:128: payload = {"documentId": document_id, "status": status, "progress": progress, **kwargs}
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:249: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:814: "documentId": str(metadata.get("source", "")),
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:891: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:927: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:954: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:982: document_id = data.get("documentId")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:985: raise HTTPException(status_code=400, detail="documentId is required")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:990: raise HTTPException(status_code=404, detail=f"No chunks found for documentId {document_id}")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:1016: "documentId": document_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:1030: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:1041: document_ids = data.get("documentIds", [])
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices.py:1117: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:128: payload = {"documentId": document_id, "status": status, "progress": progress, **kwargs}
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:249: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:814: "documentId": str(metadata.get("source", "")),
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:891: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:927: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:954: "documentId": doc_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:982: document_id = data.get("documentId")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:985: raise HTTPException(status_code=400, detail="documentId is required")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:990: raise HTTPException(status_code=404, detail=f"No chunks found for documentId {document_id}")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:1016: "documentId": document_id,
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:1030: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:1041: document_ids = data.get("documentIds", [])
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\askpdf-backend_MY_BROKEN_BACKUP\Hindices_backup.py:1117: f"{OLLAMA_URL}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\link-summary\local_link_processor.py:283: endpoint = f"{host}/api/generate"
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\pdf-rag-backend\main.py:475: f"{OLLAMA_HOST}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\pdf-rag-backend\main_backup.py:222: url = f"{OLLAMA_HOST}/api/generate"
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\pdf-rag-backend\main_backup.py:543: @app.post("/process")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\pdf-rag-backend\main_backup.py:651: @app.post("/generate")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\pdf-rag-backend\main_backup.py:672: @app.post("/generate-mcq")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\pdf-rag-backend\main_backup.py:688: @app.post("/generate-mcq-file")
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\pdf-rag-backend\main_before_card_v3.py:224: f"{OLLAMA_HOST}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\pdf-rag-backend\main_before_strict_v2.py:224: f"{OLLAMA_HOST}/api/generate",
+C:\Users\obaid\Downloads\studyflow\studyflow\ai-service\main.py:18: OLLAMA_URL = "http://127.0.0.1:11434/api/generate"

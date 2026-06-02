@@ -1,0 +1,85 @@
+[Page 1]
+McGraw-Hill/Irwin Copyright © 2007 by The McGraw-Hill Companies, Inc. All rights reserved.
+Chapter 7
+Process Modeling
+
+[Page 2]
+Composite and Elementary 
+Data Flows
+15
+
+[Page 3]
+Data Flows To and From Data 
+Stores
+16
+
+[Page 4]
+Illegal Data Flows
+17
+
+[Page 5]
+Diverging and Converging Data 
+Flows
+Diverging data flowa data flow that splits into multiple 
+data flows.
+Indicates data that starts out naturally as one flow, but 
+is routed to different destinations.
+Also useful to indicate multiple copies of the same 
+output going to different destinations.
+Converging data flowthe merger of multiple data flows 
+into a single packet.
+Indicates data from multiple sources that can (must) 
+come together as a single packet for subsequent 
+processing.
+18
+
+[Page 6]
+19
+Diverging and Converging Data 
+Flows
+
+[Page 7]
+Modern Structured Analysis
+1.Draw a context DFD to establish initial project 
+scope.
+2.Draw a functional decomposition diagram to 
+partition the system into subsystems.
+3.Create an event-response or use-case list for 
+the system to define events for which the 
+system must have a response.
+4.Draw an event DFD (or event handler) for 
+each event.
+5.Merge event DFDs into a system diagram (or, 
+for larger systems, subsystem diagrams).20
+
+[Page 8]
+Structured Analysis Diagram 
+Progression  
+21
+
+[Page 9]
+Structured Analysis Diagram 
+Progression
+22
+
+[Page 10]
+SoundStage Context DFD
+23
+
+[Page 11]
+SoundStage Functional 
+Decomposition Diagram
+24
+
+[Page 12]
+Use Case List
+25
+
+[Page 13]
+Event Decomposition Diagram 
+(partial)
+26
+
+[Page 14]
+System  DFD
+27

@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\StudentRemindersController;
 use App\Http\Controllers\ApiAiController;
 
 Route::post('/ai-api/summary', [ApiAiController::class, 'summary']);
+Route::post('/ai-api/ask', [ApiAiController::class, 'ask']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ai-api/summary', [ApiAiController::class, 'summary']);
 });

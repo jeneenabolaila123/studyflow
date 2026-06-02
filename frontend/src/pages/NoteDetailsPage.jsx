@@ -50,6 +50,18 @@ export default function NoteDetailsPage() {
     const [summaryMode, setSummaryMode] = useState(null);
     const [aiError, setAiError] = useState("");
 
+    const [summaryAiMode, setSummaryAiMode] = useState(() => {
+        return localStorage.getItem("studyflow_summary_ai_mode") || "api";
+    });
+
+    const [quizAiMode, setQuizAiMode] = useState(() => {
+        return localStorage.getItem("studyflow_quiz_ai_mode") || "local";
+    });
+
+    const [askAiMode, setAskAiMode] = useState(() => {
+        return localStorage.getItem("studyflow_ask_ai_mode") || "local";
+    });
+
     const [chatSessions, setChatSessions] = useState([]);
     const [activeChatId, setActiveChatId] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);
@@ -225,6 +237,7 @@ export default function NoteDetailsPage() {
             const displayTitle = `Summary of ${
                 note?.title || note?.original_filename || "this note"
             }`;
+
             const generatedSheet = normalizeStudySheetSummary(
                 {
                     ...res.data,
@@ -349,7 +362,7 @@ export default function NoteDetailsPage() {
 
     const handleOpenQuizPage = () => {
         notifyDashboardUpdate("studyflow_ai_usage_count");
-        navigate(`/quiz/${id}?type=mcq&difficulty=Mixed&count=5`);
+        navigate(`/quiz/${id}?difficulty=Mixed&count=5&aiMode=${quizAiMode}`);
     };
 
     const generateSummaryWithApi = async () => {
@@ -380,7 +393,9 @@ export default function NoteDetailsPage() {
 
             const toList = (value) => {
                 if (Array.isArray(value)) {
-                    return value.map((item) => String(item).trim()).filter(Boolean);
+                    return value
+                        .map((item) => String(item).trim())
+                        .filter(Boolean);
                 }
 
                 if (typeof value === "string") {
@@ -477,6 +492,32 @@ export default function NoteDetailsPage() {
         } finally {
             setSummaryLoading(false);
         }
+    };
+
+    const handleSummaryAiModeChange = (e) => {
+        const mode = e.target.value;
+        setSummaryAiMode(mode);
+        localStorage.setItem("studyflow_summary_ai_mode", mode);
+    };
+
+    const handleQuizAiModeChange = (e) => {
+        const mode = e.target.value;
+        setQuizAiMode(mode);
+        localStorage.setItem("studyflow_quiz_ai_mode", mode);
+    };
+
+    const handleAskAiModeChange = (e) => {
+        const mode = e.target.value;
+        setAskAiMode(mode);
+        localStorage.setItem("studyflow_ask_ai_mode", mode);
+    };
+
+    const handleGenerateSummaryByMode = () => {
+        if (summaryAiMode === "api") {
+            return generateSummaryWithApi();
+        }
+
+        return generateSummary();
     };
 
     const openChat = async (conversationUuid) => {
@@ -637,6 +678,22 @@ export default function NoteDetailsPage() {
         // Backend saving for like/dislike will be added next.
     };
 
+    const isGreetingMessage = (text) => {
+        const clean = text.trim().toLowerCase();
+
+        return [
+            "hi",
+            "hello",
+            "hey",
+            "hii",
+            "helo",
+            "مرحبا",
+            "marhaba",
+            "salam",
+            "السلام عليكم",
+        ].includes(clean);
+    };
+
     const sendChat = async () => {
         const message = chatInput.trim();
 
@@ -670,6 +727,7 @@ export default function NoteDetailsPage() {
                     metadata: {
                         source: "note-chat",
                         note_id: Number(id),
+                        ai_mode: askAiMode,
                     },
                 }
             );
@@ -679,19 +737,92 @@ export default function NoteDetailsPage() {
                     ...prev,
                     normalizeMessageForDisplay(savedUserResponse.chat_message),
                 ]);
+            } else {
+                setChatMessages((prev) => [
+                    ...prev,
+                    {
+                        role: "user",
+                        content: message,
+                        metadata: {
+                            source: "note-chat",
+                            note_id: Number(id),
+                            ai_mode: askAiMode,
+                        },
+                    },
+                ]);
             }
 
-            const res = await axiosClient.post(`/notes/${note.id}/ask-text`, {
-                question: message,
-                message: message,
-                conversation_uuid: conversationUuid,
-            });
+            if (isGreetingMessage(message)) {
+                const greetingReply =
+                    "Hi! What can I help you with about this note?";
 
-            const reply =
+                const savedAssistantResponse = await saveAiConversationMessage(
+                    conversationUuid,
+                    {
+                        role: "assistant",
+                        content: greetingReply,
+                        metadata: {
+                            source: "greeting",
+                            note_id: Number(id),
+                            ai_mode: askAiMode,
+                        },
+                    }
+                );
+
+                if (savedAssistantResponse?.chat_message) {
+                    setChatMessages((prev) => [
+                        ...prev,
+                        normalizeMessageForDisplay(
+                            savedAssistantResponse.chat_message
+                        ),
+                    ]);
+                } else {
+                    setChatMessages((prev) => [
+                        ...prev,
+                        {
+                            role: "ai",
+                            content: greetingReply,
+                            metadata: {
+                                source: "greeting",
+                                note_id: Number(id),
+                                ai_mode: askAiMode,
+                            },
+                        },
+                    ]);
+                }
+
+                await loadChatSessions();
+                return;
+            }
+
+            const res =
+                askAiMode === "api"
+                    ? await axiosClient.post("/ai-api/ask", {
+                          note_id: note.id,
+                          content: note?.text_content || "",
+                          question: message,
+                      })
+                    : await axiosClient.post(`/notes/${note.id}/ask-text`, {
+                          question: message,
+                          message: message,
+                          conversation_uuid: conversationUuid,
+                      });
+
+            let reply =
                 res.data?.answer ||
                 res.data?.reply ||
                 res.data?.message ||
                 "No answer returned.";
+
+            if (
+                askAiMode === "api" &&
+                Array.isArray(res.data?.key_points) &&
+                res.data.key_points.length > 0
+            ) {
+                reply +=
+                    "\n\nKey points:\n" +
+                    res.data.key_points.map((point) => `- ${point}`).join("\n");
+            }
 
             const savedAssistantResponse = await saveAiConversationMessage(
                 conversationUuid,
@@ -699,8 +830,9 @@ export default function NoteDetailsPage() {
                     role: "assistant",
                     content: reply,
                     metadata: {
-                        source: "ask-text",
+                        source: askAiMode === "api" ? "ask-api" : "ask-text",
                         note_id: Number(id),
+                        ai_mode: askAiMode,
                     },
                 }
             );
@@ -711,6 +843,19 @@ export default function NoteDetailsPage() {
                     normalizeMessageForDisplay(
                         savedAssistantResponse.chat_message
                     ),
+                ]);
+            } else {
+                setChatMessages((prev) => [
+                    ...prev,
+                    {
+                        role: "ai",
+                        content: reply,
+                        metadata: {
+                            source: askAiMode === "api" ? "ask-api" : "ask-text",
+                            note_id: Number(id),
+                            ai_mode: askAiMode,
+                        },
+                    },
                 ]);
             }
 
@@ -785,37 +930,63 @@ export default function NoteDetailsPage() {
                     className="ai-action-btns"
                     style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
                 >
-                    <button
-                        className="btn btn-outline-primary"
-                        onClick={generateSummary}
-                        disabled={summaryLoading || !canGenerateSummary}
+                    <div
+                        style={{
+                            display: "flex",
+                            gap: 8,
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                        }}
                     >
-                        {summaryLoading ? (
-                            <AiThinking label="Summarizing" />
-                        ) : (
-                            "Generate Summary"
-                        )}
-                    </button>
+                        <select
+                            className="input"
+                            value={summaryAiMode}
+                            onChange={handleSummaryAiModeChange}
+                            disabled={summaryLoading}
+                            style={{ width: 210 }}
+                        >
+                            <option value="api">Summary: API AI</option>
+                            <option value="local">Summary: Local AI</option>
+                        </select>
 
-                    <button
-                        type="button"
-                        className="btn btn-primary"
-                        onClick={generateSummaryWithApi}
-                        disabled={summaryLoading || !canGenerateSummary}
-                    >
-                        {summaryLoading ? (
-                            <AiThinking label="Generating with API" />
-                        ) : (
-                            "Generate Summary with API"
-                        )}
-                    </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleGenerateSummaryByMode}
+                            disabled={summaryLoading || !canGenerateSummary}
+                        >
+                            {summaryLoading ? (
+                                <AiThinking label="Summarizing" />
+                            ) : (
+                                "Generate Summary"
+                            )}
+                        </button>
+                    </div>
 
-                    <button
-                        className="btn btn-primary"
-                        onClick={handleOpenQuizPage}
+                    <div
+                        style={{
+                            display: "flex",
+                            gap: 8,
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                        }}
                     >
-                        Generate Quiz
-                    </button>
+                        <select
+                            className="input"
+                            value={quizAiMode}
+                            onChange={handleQuizAiModeChange}
+                            style={{ width: 190 }}
+                        >
+                            <option value="local">Quiz: Local AI</option>
+                            <option value="api">Quiz: API AI</option>
+                        </select>
+
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleOpenQuizPage}
+                        >
+                            Generate Quiz
+                        </button>
+                    </div>
                 </div>
 
                 {!canGenerateSummary && (
@@ -1150,6 +1321,17 @@ export default function NoteDetailsPage() {
                         </div>
 
                         <div className="chat-input-area">
+                            <select
+                                className="input"
+                                value={askAiMode}
+                                onChange={handleAskAiModeChange}
+                                disabled={chatLoading}
+                                style={{ maxWidth: 150 }}
+                            >
+                                <option value="local">Local AI</option>
+                                <option value="api">API AI</option>
+                            </select>
+
                             <input
                                 className="input"
                                 value={chatInput}
@@ -1159,7 +1341,11 @@ export default function NoteDetailsPage() {
                                         sendChat();
                                     }
                                 }}
-                                placeholder="Ask about this note..."
+                                placeholder={
+                                    askAiMode === "api"
+                                        ? "Ask with API about this note..."
+                                        : "Ask locally about this note..."
+                                }
                                 disabled={chatLoading}
                             />
 

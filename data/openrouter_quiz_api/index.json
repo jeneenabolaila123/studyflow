@@ -48,5 +48,55 @@
     "doc_count": 2,
     "page_count": 19,
     "is_sample": false
+  },
+  "pdf_b3c0f9fc069e4234": {
+    "pdf_id": "pdf_b3c0f9fc069e4234",
+    "name": "SA_IE.pdf",
+    "collection_name": "pdf_b3c0f9fc069e4234",
+    "pdf_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\pdfs\\pdf_b3c0f9fc069e4234_SA_IE.pdf",
+    "text_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\texts\\pdf_b3c0f9fc069e4234.txt",
+    "doc_count": 5,
+    "page_count": 27,
+    "is_sample": false
+  },
+  "pdf_68b559ffb0af4b83": {
+    "pdf_id": "pdf_68b559ffb0af4b83",
+    "name": "W7L1-Use Case (1).pdf",
+    "collection_name": "pdf_68b559ffb0af4b83",
+    "pdf_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\pdfs\\pdf_68b559ffb0af4b83_W7L1-Use Case (1).pdf",
+    "text_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\texts\\pdf_68b559ffb0af4b83.txt",
+    "doc_count": 2,
+    "page_count": 16,
+    "is_sample": false
+  },
+  "pdf_84212b310a36473b": {
+    "pdf_id": "pdf_84212b310a36473b",
+    "name": "SA_IE.pdf",
+    "collection_name": "pdf_84212b310a36473b",
+    "pdf_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\pdfs\\pdf_84212b310a36473b_SA_IE.pdf",
+    "text_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\texts\\pdf_84212b310a36473b.txt",
+    "doc_count": 5,
+    "page_count": 27,
+    "is_sample": false
+  },
+  "pdf_91d5349115e146a4": {
+    "pdf_id": "pdf_91d5349115e146a4",
+    "name": "ENGL251_Chapter 3 (1).pdf",
+    "collection_name": "pdf_91d5349115e146a4",
+    "pdf_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\pdfs\\pdf_91d5349115e146a4_ENGL251_Chapter 3 (1).pdf",
+    "text_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\texts\\pdf_91d5349115e146a4.txt",
+    "doc_count": 4,
+    "page_count": 28,
+    "is_sample": false
+  },
+  "pdf_af39a9e07bec49ca": {
+    "pdf_id": "pdf_af39a9e07bec49ca",
+    "name": "W11L1-DFD.pdf",
+    "collection_name": "pdf_af39a9e07bec49ca",
+    "pdf_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\pdfs\\pdf_af39a9e07bec49ca_W11L1-DFD.pdf",
+    "text_path": "C:\\Users\\obaid\\Downloads\\studyflow\\studyflow\\data\\openrouter_quiz_api\\texts\\pdf_af39a9e07bec49ca.txt",
+    "doc_count": 1,
+    "page_count": 14,
+    "is_sample": false
   }
 }

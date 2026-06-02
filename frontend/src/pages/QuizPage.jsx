@@ -826,7 +826,7 @@ export default function QuizPage() {
   const navigate = useNavigate();
 
   const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedModel, setSelectedModel] = useState("qwen2.5:1.5b");
+  const [selectedModel, setSelectedModel] = useState("llama3.2:3b");
   const [customPrompt, setCustomPrompt] = useState("");
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -1287,8 +1287,9 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
       if (Array.isArray(responseData?.questions) && responseData.questions.length === 5) {
         const generatedQuiz = serializeQuizForStorage(responseData.questions);
         setQuizText(generatedQuiz);
-        setQuizError("");
-        setQuizLoading(false);
+        setError("");
+        setStatus("Quiz generated successfully.");
+        setLoading(false);
         return;
       }
 

@@ -17,7 +17,7 @@ class PaidAiClient
         }
 
         // Keep input safe for API/token limits
-        $content = mb_substr($content, 0, 18000);
+        $content = mb_substr($content, 0, 24000);
 
         $instructions = <<<PROMPT
 You are StudyFlow's academic summary assistant.
@@ -34,10 +34,20 @@ Return ONLY valid JSON with these exact keys:
 }
 
 Rules:
-- Each array should contain 3 to 6 short useful bullet points.
+- main_ideas should contain 6 to 8 clear bullet points.
+- key_facts should contain 8 to 12 useful facts or concepts.
+- important_details should contain 10 to 14 detailed bullet points.
+- exam_revision_notes should contain 8 to 12 useful exam revision notes.
+- Cover all major parts of the provided content, not only the first part.
+- Include definitions, methods, examples, sentence types, writing techniques, common faults, and comparison points when they appear in the content.
+- Mention important examples from the content when available.
+- Include specific examples from the content, such as Arabic words, tables, formulas, word-order patterns, and translation examples when available.
 - Keep the language clear for exam revision.
-- Do not add markdown.
+- Include at least 4 to 6 specific examples from the content when examples are available, especially Arabic words, formulas, tables, translations, or word-order patterns.
+- Mention important subtopics by name instead of summarizing them generally.
+- Do not add markdown.- Mention important subtopics by name instead of summarizing them generally.
 - Do not add extra keys.
+- Return only valid JSON.
 PROMPT;
 
         $input = "CONTENT:\n" . $content;
@@ -51,7 +61,57 @@ PROMPT;
             'exam_revision_notes' => $json['exam_revision_notes'] ?? [],
         ];
     }
+    public function answerQuestion(string $content, string $question): array
+    {
+        $content = trim($content);
+        $question = trim($question);
 
+        if ($content === '') {
+            throw new RuntimeException('Empty content. Cannot answer question.');
+        }
+
+        if ($question === '') {
+            throw new RuntimeException('Empty question.');
+        }
+
+        // Keep input safe for API/token limits.
+        $content = mb_substr($content, 0, 24000);
+
+        $instructions = <<<PROMPT
+You are StudyFlow's academic Ask-PDF assistant.
+
+Use ONLY the provided note/PDF content.
+Do NOT use outside knowledge.
+Do NOT invent facts, examples, definitions, or explanations.
+
+If the answer is not clearly found in the provided content, say:
+"The answer is not clearly mentioned in the provided content."
+
+Return ONLY valid JSON with these exact keys:
+{
+  "answer": "",
+  "key_points": []
+}
+
+Rules:
+- Answer the student's question clearly.
+- Keep the answer useful for exam revision.
+- Include specific examples from the content when available.
+- key_points should contain 3 to 6 short useful points.
+- Do not add markdown.
+- Do not add extra keys.
+- Return only valid JSON.
+PROMPT;
+
+        $input = "QUESTION:\n" . $question . "\n\nCONTENT:\n" . $content;
+
+        $json = $this->callOpenAiJson($instructions, $input);
+
+        return [
+            'answer' => $json['answer'] ?? '',
+            'key_points' => $json['key_points'] ?? [],
+        ];
+    }
     private function callOpenAiJson(string $instructions, string $input): array
     {
         $apiKey = config('services.ai_api.key');
