@@ -9,49 +9,29 @@ use Illuminate\Support\Facades\Log;
 
 class ApiAiController extends Controller
 {
-    public function summary(Request $request, PaidAiClient $ai)
+    public function summary(Request $request, PaidAiClient $client)
     {
-        $validated = $request->validate([
-            'note_id' => ['nullable', 'integer'],
-            'content' => ['nullable', 'string'],
-        ]);
-
         try {
-            $content = $validated['content'] ?? '';
+            $request->validate([
+                'note_id' => ['nullable', 'integer'],
+                'text' => ['nullable', 'string'],
+                'title' => ['nullable', 'string'],
+            ]);
 
-            if (!$content && !empty($validated['note_id'])) {
-                $note = Note::findOrFail($validated['note_id']);
+            [$text, $title] = $this->resolveTextAndTitle($request);
 
-                $content =
-                    $note->content
-                    ?? $note->text
-                    ?? $note->extracted_text
-                    ?? $note->text_content
-                    ?? $note->body
-                    ?? '';
-            }
-
-            $content = trim($content);
-
-            if ($content === '') {
+            if (!$text) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No note or PDF text found for API summary.',
+                    'message' => 'No note text found for API summary.',
                 ], 422);
             }
 
-            $summary = $ai->generateSummary($content);
+            $summary = $client->summarize($text, $title);
 
             return response()->json([
                 'success' => true,
-                'provider' => 'api',
                 'summary' => $summary,
-
-                // Extra compatibility fields in case your frontend expects direct keys
-                'main_ideas' => $summary['main_ideas'],
-                'key_facts' => $summary['key_facts'],
-                'important_details' => $summary['important_details'],
-                'exam_revision_notes' => $summary['exam_revision_notes'],
             ]);
         } catch (\Throwable $e) {
             Log::error('API summary controller failed', [
@@ -61,49 +41,33 @@ class ApiAiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'API summary failed. Please try again.',
-                'error' => app()->environment('local') ? $e->getMessage() : null,
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
-    public function ask(Request $request, PaidAiClient $ai)
+
+    public function ask(Request $request, PaidAiClient $client)
     {
-        $validated = $request->validate([
-            'note_id' => ['nullable', 'integer'],
-            'content' => ['nullable', 'string'],
-            'question' => ['required', 'string', 'min:2'],
-        ]);
-
         try {
-            $content = $validated['content'] ?? '';
+            $request->validate([
+                'note_id' => ['required', 'integer'],
+                'question' => ['required', 'string'],
+            ]);
 
-            if (!$content && !empty($validated['note_id'])) {
-                $note = Note::findOrFail($validated['note_id']);
+            [$text] = $this->resolveTextAndTitle($request);
 
-                $content =
-                    $note->content
-                    ?? $note->text
-                    ?? $note->extracted_text
-                    ?? $note->text_content
-                    ?? $note->body
-                    ?? '';
-            }
-
-            $content = trim($content);
-
-            if ($content === '') {
+            if (!$text) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No note or PDF text found for API ask.',
+                    'message' => 'No note text found for API ask.',
                 ], 422);
             }
 
-            $result = $ai->answerQuestion($content, $validated['question']);
+            $answer = $client->ask($text, $request->question);
 
             return response()->json([
                 'success' => true,
-                'provider' => 'api',
-                'answer' => $result['answer'] ?? '',
-                'key_points' => $result['key_points'] ?? [],
+                'answer' => $answer,
             ]);
         } catch (\Throwable $e) {
             Log::error('API ask controller failed', [
@@ -113,8 +77,68 @@ class ApiAiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'API ask failed. Please try again.',
-                'error' => app()->environment('local') ? $e->getMessage() : null,
+                'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function quiz(Request $request, PaidAiClient $client)
+    {
+        try {
+            $request->validate([
+                'note_id' => ['nullable', 'integer'],
+                'text' => ['nullable', 'string'],
+            ]);
+
+            [$text] = $this->resolveTextAndTitle($request);
+
+            if (!$text) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No note text found for API quiz.',
+                ], 422);
+            }
+
+            $questions = $client->quiz($text);
+
+            return response()->json([
+                'success' => true,
+                'questions' => $questions,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('API quiz controller failed', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'API quiz failed. Please try again.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function resolveTextAndTitle(Request $request): array
+    {
+        if ($request->filled('text')) {
+            return [$request->input('text'), $request->input('title', 'this note')];
+        }
+
+        $note = Note::find($request->input('note_id'));
+
+        if (!$note) {
+            return ['', 'this note'];
+        }
+
+        $text =
+            $note->text_content
+            ?? $note->extracted_text
+            ?? $note->content
+            ?? $note->description
+            ?? '';
+
+        $title = $note->title ?? $note->original_filename ?? 'this note';
+
+        return [trim((string) $text), $title];
     }
 }

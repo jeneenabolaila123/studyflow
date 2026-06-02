@@ -179,3 +179,98 @@ PROMPT;
         return $decoded;
     }
 }
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
+
+class PaidAiClient
+{
+    public function summarize(string $text, string $title = 'this note'): string
+    {
+        $instructions = "You are StudyFlow AI. Summarize the provided study material clearly for exam revision. Use only the provided content. Return sections: Main Idea, Main Topics, Key Facts and Concepts, Important Details, Exam Revision Points.";
+        $json = $this->callOpenAiJson($instructions, "Title: {$title}\n\nContent:\n{$text}");
+        return $this->extractText($json);
+    }
+
+    public function ask(string $context, string $question): string
+    {
+        $instructions = "You are StudyFlow AI. Answer the student's question using only the provided note content. If the answer is not in the note, say that it is not found in the note.";
+        $json = $this->callOpenAiJson($instructions, "Question:\n{$question}\n\nNote content:\n{$context}");
+        return $this->extractText($json);
+    }
+
+    public function quiz(string $text): array
+    {
+        $instructions = "Generate exactly 5 MCQs from the provided content. Use only the content. 3 Hard and 2 Medium. Each question has A, B, C, D. Correct answer is one letter only. No All/None/Both. Keep options short. Add a short explanation. Return valid JSON only with key questions.";
+        $json = $this->callOpenAiJson($instructions, $text);
+        $content = $this->extractText($json);
+
+        $decoded = json_decode($content, true);
+
+        if (json_last_error() === JSON_ERROR_NONE && isset($decoded['questions'])) {
+            return $decoded['questions'];
+        }
+
+        return [
+            [
+                'question' => 'Could not parse API quiz response.',
+                'options' => ['A' => 'Try again', 'B' => 'Use local AI', 'C' => 'Check API key', 'D' => 'Check content'],
+                'correct_answer' => 'A',
+                'explanation' => $content,
+            ],
+        ];
+    }
+
+    private function callOpenAiJson(string $instructions, string $input): array
+    {
+        $apiKey = trim((string) config('services.ai_api.key'));
+        $model = config('services.ai_api.model', 'google/gemini-2.5-flash');
+        $baseUrl = rtrim(config('services.ai_api.base_url', 'https://openrouter.ai/api/v1'), '/');
+        $timeout = (int) config('services.ai_api.timeout', 120);
+
+        if (!$apiKey) {
+            throw new RuntimeException('Missing AI API key.');
+        }
+
+        $response = Http::timeout($timeout)
+            ->withToken($apiKey)
+            ->withHeaders([
+                'HTTP-Referer' => 'http://localhost:5173',
+                'X-Title' => 'StudyFlow',
+                'Content-Type' => 'application/json',
+            ])
+            ->post($baseUrl . '/chat/completions', [
+                'model' => $model,
+                'messages' => [
+                    ['role' => 'system', 'content' => $instructions],
+                    ['role' => 'user', 'content' => $input],
+                ],
+                'temperature' => 0.2,
+            ]);
+
+        if (!$response->successful()) {
+            Log::error('AI API request failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            throw new RuntimeException('AI API request failed.');
+        }
+
+        return $response->json();
+    }
+
+    private function extractText(array $json): string
+    {
+        return trim(
+            $json['choices'][0]['message']['content']
+            ?? $json['choices'][0]['text']
+            ?? $json['output']
+            ?? ''
+        );
+    }
+}

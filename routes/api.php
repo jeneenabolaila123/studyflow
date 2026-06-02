@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Http;
@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\Admin\AdminUsersController;
 use App\Http\Controllers\Api\Admin\AdminNotesController;
 use App\Http\Controllers\Api\LinkSummaryController;
 use App\Http\Controllers\Api\AiConversationController;
+use App\Http\Controllers\ApiAiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,7 +49,11 @@ Route::middleware('auth:sanctum')->group(function () {
 | Auth Routes
 |--------------------------------------------------------------------------
 */
-
+Route::middleware('auth:sanctum')->prefix('ai-api')->group(function () {
+    Route::post('/summary', [ApiAiController::class, 'summary']);
+    Route::post('/ask', [ApiAiController::class, 'ask']);
+    Route::post('/quiz', [ApiAiController::class, 'quiz']);
+});
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
 
@@ -226,6 +231,7 @@ Route::get('/ai/test', function () {
 Route::options('/{any}', function () {
     return response()->json([], 200);
 })->where('any', '.*');
+
 use App\Http\Controllers\Api\SummaryServiceController;
 
 Route::post('/summary-service/upload', [SummaryServiceController::class, 'upload']);

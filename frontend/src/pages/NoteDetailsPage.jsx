@@ -16,7 +16,7 @@ import {
 function AiThinking({ label = "AI is thinking" }) {
     return (
         <span className="ai-thinking">
-            <span className="ai-thinking-icon">âœ¦</span>
+            <span className="ai-thinking-icon">✦</span>
             {label}
             <span className="ai-thinking-dots">
                 <span />
@@ -35,6 +35,10 @@ export default function NoteDetailsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
+
+    const [summaryProvider, setSummaryProvider] = useState("local");
+    const [quizProvider, setQuizProvider] = useState("local");
+    const [askProvider, setAskProvider] = useState("local");
 
     const [summary, setSummary] = useState("");
     const [summaryFilename, setSummaryFilename] = useState("");
@@ -96,6 +100,32 @@ export default function NoteDetailsPage() {
         metadata: message.metadata || {},
         created_at: message.created_at || null,
     });
+
+    const cleanSummaryForDisplay = (text) => {
+        if (!text) return "";
+
+        let cleaned = String(text).trim();
+
+        const cutMarkers = [
+            "\nExpectation",
+            "\nMain Idea\n# Text Summary",
+            "\nShort Summary",
+            "\nRevision / Key Points",
+            "\nImplied Idea",
+            "\nTheme",
+            "\nImportant Quotes",
+        ];
+
+        for (const marker of cutMarkers) {
+            const index = cleaned.indexOf(marker);
+
+            if (index !== -1) {
+                cleaned = cleaned.slice(0, index).trim();
+            }
+        }
+
+        return cleaned;
+    };
 
     useEffect(() => {
         let mounted = true;
@@ -185,7 +215,14 @@ export default function NoteDetailsPage() {
 
             let res;
 
-            if (hasTextContent) {
+            if (summaryProvider === "api") {
+                res = await axiosClient.post("/ai-api/summary", {
+                    note_id: note.id,
+                    title: `Summary of ${
+                        note?.title || note?.original_filename || "this note"
+                    }`,
+                });
+            } else if (hasTextContent) {
                 res = await axiosClient.post("/local-ai/summary/text", {
                     text: note.text_content,
                     note_id: note.id,
@@ -203,8 +240,10 @@ export default function NoteDetailsPage() {
                 res.data?.summary ||
                 res.data?.output ||
                 res.data?.answer ||
+                res.data?.response ||
                 res.data?.data?.summary ||
                 res.data?.data?.output ||
+                res.data?.data?.response ||
                 "";
 
             if (!summaryText) {
@@ -212,7 +251,9 @@ export default function NoteDetailsPage() {
                 return;
             }
 
-            setSummary(summaryText);
+            const cleanedSummary = cleanSummaryForDisplay(summaryText);
+
+            setSummary(cleanedSummary);
 
             setSummaryFilename(
                 note?.original_filename || note?.title || "this note"
@@ -225,7 +266,7 @@ export default function NoteDetailsPage() {
                         note?.title || note?.original_filename || "this note"
                     }`,
                     source_type: isPdfNote ? "pdf" : "text",
-                    summary_text: summaryText,
+                    summary_text: cleanedSummary,
                 });
 
                 notifyDashboardUpdate("studyflow_ai_summaries_count");
@@ -252,7 +293,10 @@ export default function NoteDetailsPage() {
                 setSummaryTime(seconds);
             }
         } catch (err) {
-            console.error("SUMMARY ERROR:", err?.response?.data || err.message);
+            console.error(
+                "SUMMARY ERROR:",
+                err?.response?.data || err.message
+            );
 
             const errorMessage =
                 err?.response?.data?.message ||
@@ -309,7 +353,9 @@ export default function NoteDetailsPage() {
 
     const handleOpenQuizPage = () => {
         notifyDashboardUpdate("studyflow_ai_usage_count");
-        navigate(`/quiz/${id}?type=mcq&difficulty=Mixed&count=5`);
+        navigate(
+            `/quiz/${id}?type=mcq&difficulty=Mixed&count=5&provider=${quizProvider}`
+        );
     };
 
     const openChat = async (conversationUuid) => {
@@ -503,6 +549,7 @@ export default function NoteDetailsPage() {
                     metadata: {
                         source: "note-chat",
                         note_id: Number(id),
+                        provider: askProvider,
                     },
                 }
             );
@@ -514,14 +561,24 @@ export default function NoteDetailsPage() {
                 ]);
             }
 
-            const res = await axiosClient.post(`/notes/${note.id}/ask-text`, {
-                question: message,
-                message: message,
-                conversation_uuid: conversationUuid,
-            });
+            let res;
+
+            if (askProvider === "api") {
+                res = await axiosClient.post("/ai-api/ask", {
+                    note_id: note.id,
+                    question: message,
+                });
+            } else {
+                res = await axiosClient.post(`/notes/${note.id}/ask-text`, {
+                    question: message,
+                    message: message,
+                    conversation_uuid: conversationUuid,
+                });
+            }
 
             const reply =
                 res.data?.answer ||
+                res.data?.response ||
                 res.data?.reply ||
                 res.data?.message ||
                 "No answer returned.";
@@ -532,8 +589,9 @@ export default function NoteDetailsPage() {
                     role: "assistant",
                     content: reply,
                     metadata: {
-                        source: "ask-text",
+                        source: askProvider === "api" ? "api-ask" : "ask-text",
                         note_id: Number(id),
+                        provider: askProvider,
                     },
                 }
             );
@@ -586,7 +644,7 @@ export default function NoteDetailsPage() {
     return (
         <div className="dashboard-page">
             <Link to="/notes" className="back-link">
-                â† Back to Notes
+                ← Back to Notes
             </Link>
 
             <div className="section-card">
@@ -616,8 +674,35 @@ export default function NoteDetailsPage() {
 
                 <div
                     className="ai-action-btns"
-                    style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+                    style={{
+                        display: "flex",
+                        gap: 12,
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                    }}
                 >
+                    <label
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            fontWeight: 600,
+                        }}
+                    >
+                        Summary:
+                        <select
+                            className="input"
+                            value={summaryProvider}
+                            onChange={(e) =>
+                                setSummaryProvider(e.target.value)
+                            }
+                            style={{ minWidth: 130 }}
+                        >
+                            <option value="local">Local AI</option>
+                            <option value="api">API AI</option>
+                        </select>
+                    </label>
+
                     <button
                         className="btn btn-primary"
                         onClick={generateSummary}
@@ -629,6 +714,26 @@ export default function NoteDetailsPage() {
                             "Generate Summary"
                         )}
                     </button>
+
+                    <label
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            fontWeight: 600,
+                        }}
+                    >
+                        Quiz:
+                        <select
+                            className="input"
+                            value={quizProvider}
+                            onChange={(e) => setQuizProvider(e.target.value)}
+                            style={{ minWidth: 130 }}
+                        >
+                            <option value="local">Local AI</option>
+                            <option value="api">API AI</option>
+                        </select>
+                    </label>
 
                     <button
                         className="btn btn-primary"
@@ -720,7 +825,7 @@ export default function NoteDetailsPage() {
                                     fontSize: "14px",
                                 }}
                             >
-                                â±ï¸ Generated in {summaryTime} seconds
+                                ⏱️ Generated in {summaryTime} seconds
                             </div>
                         )}
 
@@ -850,7 +955,7 @@ export default function NoteDetailsPage() {
                                     }}
                                     title="Delete chat"
                                 >
-                                    Ã—
+                                    ×
                                 </button>
                             </div>
                         ))}
@@ -885,6 +990,37 @@ export default function NoteDetailsPage() {
                             {chatLoading && <TypingIndicator />}
 
                             <div ref={chatEndRef} />
+                        </div>
+
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "flex-end",
+                                margin: "10px 0",
+                            }}
+                        >
+                            <label
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    fontWeight: 600,
+                                    fontSize: 14,
+                                }}
+                            >
+                                Ask:
+                                <select
+                                    className="input"
+                                    value={askProvider}
+                                    onChange={(e) =>
+                                        setAskProvider(e.target.value)
+                                    }
+                                    style={{ minWidth: 130 }}
+                                >
+                                    <option value="local">Local AI</option>
+                                    <option value="api">API AI</option>
+                                </select>
+                            </label>
                         </div>
 
                         <div className="chat-input-area">

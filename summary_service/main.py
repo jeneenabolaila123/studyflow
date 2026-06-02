@@ -21,32 +21,31 @@ class ConversationRequest(BaseModel):
 
 
 def ask_ollama(text: str) -> str:
-  prompt = f"""
+    prompt = f"""
 You are an academic study assistant.
 
 Summarize the following content using ONLY the provided text.
 Do not add outside information.
-Make the summary detailed enough for exam revision.
+Avoid repetition.
 
-Return the answer in this exact structure:
+Return the answer with ONLY these headings, in this exact order:
 
-Main Ideas
-- Write 4 to 6 clear bullet points.
-- Focus on the central concepts, not only the title.
+## Expectation
 
-Key Facts
-- Write 5 to 8 important facts from the content.
-- Include definitions, classifications, causes, examples, or steps when available.
+## Main Idea
 
-Important Details
-- Write 6 to 10 detailed bullet points.
-- Explain relationships between ideas.
-- Include examples from the text when available.
+## Short Summary
 
-Exam Revision Notes
-- Write 5 to 8 revision points.
-- Focus on what a student should remember for an exam.
-- Avoid very short or generic notes.
+## Revision
+
+## Implied Idea
+
+## Theme
+
+## Important Quotes
+
+Do not add extra headings or old sections such as Key Facts, Important Details, Examples/Evidence, or Exam Revision Notes.
+If there are no direct quotes, write under Important Quotes: No important direct quotes found.
 
 Content:
 {text}
