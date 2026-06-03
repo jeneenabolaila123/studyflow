@@ -42,14 +42,3 @@ __pycache__/
 
 # Local environment files
 .env
-
-ai-service/ollama_pdf_rag/.venv/
-ai-service/ollama_pdf_rag/**/__pycache__/
-ai-service/ollama_pdf_rag/**/*.pyc
-ai-service/ollama_pdf_rag/**/*.sqlite3
-ai-service/ollama_pdf_rag/**/*.db
-ai-service/ollama_pdf_rag/data/
-ai-service/ollama_pdf_rag/src/data/vectors/
-ai-service/ollama_pdf_rag/src/data/pdfs/uploads/
-ai-service/ollama_pdf_rag/src/app/main_old_friend_version.py
-ai-service/ollama_pdf_rag/src/app/main_old_friend_version.py
