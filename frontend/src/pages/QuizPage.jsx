@@ -1034,38 +1034,11 @@ export default function QuizPage() {
     setQuizPdfName(file.name);
     setStatus(`Selected: ${file.name}`);
   }
-  const getCachedPdf = (fileName) => {
-  try {
-    const cache = JSON.parse(localStorage.getItem("studyflow_pdf_cache") || "{}");
-    return cache[fileName] || null;
-  } catch {
-    return null;
-  }
-};
-
-const saveCachedPdf = (fileName, pdfId) => {
-  try {
-    const cache = JSON.parse(localStorage.getItem("studyflow_pdf_cache") || "{}");
-
-    cache[fileName] = {
-      pdfId,
-      savedAt: Date.now(),
-    };
-
-    localStorage.setItem(
-      "studyflow_pdf_cache",
-      JSON.stringify(cache)
-    );
-  } catch (e) {
-    console.error(e);
-  }
-};
-
   async function generateQuiz() {
     if (loading) return;
 
     if (!selectedFile) {
-      setError("Please choose a PDF first.");
+      setError("Please upload a PDF first.");
       return;
     }
 
@@ -1100,15 +1073,6 @@ const saveCachedPdf = (fileName, pdfId) => {
     try {
       let pdfId = uploadedPdfId;
 
-      if (!pdfId && selectedFile) {
-        const cached = getCachedPdf(selectedFile.name);
-        if (cached?.pdfId) {
-          pdfId = cached.pdfId;
-          setUploadedPdfId(pdfId);
-          setStatus("Using saved PDF cache...");
-        }
-      }
-
       if (!pdfId) {
         const formData = new FormData();
         formData.append("file", selectedFile);
@@ -1129,22 +1093,21 @@ const saveCachedPdf = (fileName, pdfId) => {
         const uploadData = await uploadResponse.json();
         console.log("UPLOAD DATA", uploadData);
 
-        pdfId =
-          uploadData.pdf_id ||
-          uploadData.doc_id ||
-          uploadData.docId ||
-          uploadData.document_id ||
-          uploadData.id;
+        pdfId = uploadData.pdf_id;
+        console.log("Uploaded pdf_id", pdfId);
 
         if (!pdfId) {
-          throw new Error("PDF uploaded, but no pdf_id/doc_id/docId/document_id/id was returned.");
+          throw new Error("Please upload a PDF first.");
         }
 
         setUploadedPdfId(pdfId);
-        saveCachedPdf(selectedFile.name, pdfId);
       }
 
-      console.log("PDF ID USED", pdfId);
+      if (!pdfId) {
+        throw new Error("Please upload a PDF first.");
+      }
+
+      console.log("Sent pdf_id", pdfId);
 
       const promptText = `
 Create a lightweight quiz from the uploaded PDF content.
@@ -1252,15 +1215,14 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
 
       setStatus("Generating 5 MCQs from the PDF...");
 
-      const queryPayload = {
-        question: promptText,
-        model: selectedModel,
-        pdf_ids: [pdfId],
-      };
+    const queryPayload = {
+  pdf_id: pdfId,
+  model: selectedModel || "llama3.2:3b",
+};
 
-      console.log("QUERY PAYLOAD", queryPayload);
+console.log("QUIZ PAYLOAD", queryPayload);
 
-      const quizResponse = await fetchWithFrontendTimeout(`${PDF_RAG_URL}/api/v1/query`, {
+const quizResponse = await fetchWithFrontendTimeout(`${PDF_RAG_URL}/api/v1/quiz/mcq`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1460,7 +1422,129 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
       setLoading(false);
     }
   }
+const generateSubjectiveQuiz = async () => {
+  if (loading) return;
 
+  if (!selectedFile) {
+    setError("Please upload a PDF first.");
+    return;
+  }
+
+  const requestId = Date.now();
+  activeRequestIdRef.current = requestId;
+
+  setLoading(true);
+  setError("");
+  setQuizText("");
+  setSources([]);
+  setSelectedAnswers({});
+  setSubmitted(false);
+  setStatus(uploadedPdfId ? "Using cached PDF..." : "Uploading PDF...");
+
+  const fetchWithFrontendTimeout = (url, options = {}) => {
+    let timeoutId;
+
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(QUIZ_TIMEOUT_MESSAGE));
+      }, GENERATION_TIMEOUT_MS);
+    });
+
+    return Promise.race([fetch(url, { ...options }), timeoutPromise]).finally(() => {
+      clearTimeout(timeoutId);
+    });
+  };
+
+  try {
+    let pdfId = uploadedPdfId;
+
+    if (!pdfId) {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const uploadResponse = await fetchWithFrontendTimeout(
+        `${PDF_RAG_URL}/api/v1/pdfs/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!uploadResponse.ok) {
+        const text = await uploadResponse.text();
+        throw new Error(`PDF upload failed: ${text}`);
+      }
+
+      const uploadData = await uploadResponse.json();
+      console.log("SUBJECTIVE UPLOAD DATA", uploadData);
+
+      pdfId = uploadData.pdf_id;
+
+      if (!pdfId) {
+        throw new Error("Please upload a PDF first.");
+      }
+
+      setUploadedPdfId(pdfId);
+    }
+
+    setStatus("Generating subjective quiz...");
+
+    const response = await fetchWithFrontendTimeout(
+      `${PDF_RAG_URL}/api/v1/quiz/subjective`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          pdf_id: pdfId,
+          model: selectedModel || "llama3.2:3b",
+        }),
+      }
+    );
+
+    const responseText = await response.text();
+    let data;
+
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = { quiz: responseText };
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        typeof data.detail === "string"
+          ? data.detail
+          : "Failed to generate subjective quiz."
+      );
+    }
+
+    const subjectiveQuiz = data.quiz || data.answer || data.text || "";
+
+    if (!subjectiveQuiz.trim()) {
+      throw new Error("The local AI returned an empty subjective quiz.");
+    }
+
+    if (activeRequestIdRef.current !== requestId) {
+      return;
+    }
+
+    setQuizText(subjectiveQuiz);
+    setSources(Array.isArray(data.sources) ? data.sources : []);
+    setStatus("Subjective quiz generated successfully.");
+  } catch (err) {
+    if (activeRequestIdRef.current !== requestId) {
+      return;
+    }
+
+    console.error(err);
+    setError(err.message || "Failed to generate subjective quiz.");
+    setStatus("Failed to generate subjective quiz.");
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className={`quiz-page ${themeMode === "dark" ? "dark-mode" : ""}`}>
       <style>{`
@@ -2072,6 +2156,23 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
           font-size: 14px;
         }
 
+        .subjective-output {
+          white-space: pre-wrap;
+          line-height: 1.7;
+          color: #111827;
+          font-size: 15px;
+        }
+
+        .subjective-output pre {
+          white-space: pre-wrap;
+          font-family: inherit;
+          margin: 0;
+        }
+
+        .quiz-page.dark-mode .subjective-output {
+          color: #e5e7eb;
+        }
+
 
         .quiz-page {
           overflow-x: hidden;
@@ -2452,163 +2553,20 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
                       <span>processing...</span>
                     </div>
                   ) : quizText ? (
-                    <>
-                      {hasValidQuiz ? (
-                        <div className="quiz-interactive">
-                          {parsedQuestions.map((q, index) => {
-                            const selected = selectedAnswers[q.id];
-                            const selectedLetter = normalizeAnswerLetter(
-                              selected,
-                              q.options
-                            );
-                            const correctLetter = normalizeAnswerLetter(
-                              q.correctAnswer,
-                              q.options
-                            );
-                            const isCorrect =
-                              submitted &&
-                              selectedLetter === correctLetter;
-
-                            return (
-                              <div className="quiz-question-card" key={q.id}>
-                                <h3>
-                                  Q{index + 1}: {q.question}
-                                </h3>
-
-                                <div className="quiz-options">
-                                  {q.options.map((option) => {
-                                    const isSelected =
-                                      selectedLetter ===
-                                      normalizeAnswerLetter(option.letter, q.options);
-
-                                    const isCorrectOption =
-                                      submitted &&
-                                      normalizeAnswerLetter(option.letter, q.options) ===
-                                      correctLetter;
-
-                                    const isWrongSelected =
-                                      submitted &&
-                                      isSelected &&
-                                      normalizeAnswerLetter(option.letter, q.options) !==
-                                      correctLetter;
-
-                                    return (
-                                      <button
-                                        type="button"
-                                        key={option.letter}
-                                        className={[
-                                          "quiz-option",
-                                          isSelected ? "selected" : "",
-                                          isCorrectOption ? "correct" : "",
-                                          isWrongSelected ? "wrong" : "",
-                                        ].join(" ")}
-                                        onClick={() =>
-                                          handleSelectAnswer(q.id, option.letter)
-                                        }
-                                      >
-                                        <span>{option.letter}.</span>
-                                        <p>{option.text}</p>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-
-                                {submitted && (
-                                  <div
-                                    className={
-                                      isCorrect
-                                        ? "answer-result correct-text"
-                                        : "answer-result wrong-text"
-                                    }
-                                  >
-                                    {isCorrect ? (
-                                      <strong>Correct </strong>
-                                    ) : (
-                                      <strong>
-                                        Correct answer: {correctLetter}
-                                      </strong>
-                                    )}
-
-                                    {isCorrect && (
-                                      <p className="answer-explanation">
-                                        Correct answer: {correctLetter}
-                                      </p>
-                                    )}
-
-                                    {q.explanation && (
-                                      <p className="answer-explanation">
-                                        {q.explanation}
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-
-                          {!submitted && (
-                            <button
-                              type="button"
-                              className="submit-answers-btn"
-                              onClick={handleSubmitAnswers}
-                              disabled={!hasValidQuiz || answeredCount !== parsedQuestions.length}
-                            >
-                              Submit Answers
-                            </button>
-                          )}
-
-                          {!submitted && answeredCount !== parsedQuestions.length && (
-                            <p className="quiz-hint">
-                              Answer all questions before submitting.
-                            </p>
-                          )}
-
-                          {submitted && (
-                            <>
-                              <div className="quiz-score">
-                                Score:{" "}
-                                {
-                                  parsedQuestions.filter(
-                                    (q) =>
-                                      normalizeAnswerLetter(selectedAnswers[q.id], q.options) ===
-                                      normalizeAnswerLetter(q.correctAnswer, q.options)
-                                  ).length
-                                }
-                                /{parsedQuestions.length}
-                              </div>
-
-                              <button
-                                type="button"
-                                className="recommendation-link-btn"
-                                onClick={() => {
-                                  navigate("/recommendations");
-                                }}
-                              >
-                                View Study Recommendations
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="warning-box">
-                          <span className="bot-icon"></span>
-                          <span>
-                            Quiz generated, but the format was invalid. Please click Regenerate Quiz.
-                          </span>
-                        </div>
-                      )}
+                    <div className="subjective-output">
+                      <pre>{quizText}</pre>
 
                       {sources.length > 0 && (
                         <div className="sources">
                           Sources used: {sources.length} chunk(s)
                         </div>
                       )}
-                    </>
+                    </div>
                   ) : selectedFile ? (
                     <div className="chat-empty">
                       <div className="warning-box">
                         <span className="bot-icon"></span>
-                        <span>Click Generate Quiz to create 5 MCQs from the uploaded PDF.</span>
+                        <span>Click Generate Subjective Quiz to create written questions from the uploaded PDF.</span>
                       </div>
                     </div>
                   ) : (
@@ -2627,10 +2585,10 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
                   <button
                     className="generate-btn"
                     type="button"
-                    onClick={generateQuiz}
+                    onClick={generateSubjectiveQuiz}
                     disabled={loading || !selectedFile}
                   >
-                    {loading ? "Generating..." : quizText ? "Regenerate Quiz" : "Generate 5 MCQs"}
+                    {loading ? "Generating subjective quiz..." : quizText ? "Regenerate Subjective Quiz" : "Generate Subjective Quiz"}
                   </button>
 
                   <div className="prompt-row">
@@ -2642,7 +2600,7 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
                       onChange={(e) => setCustomPrompt(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && selectedFile && !loading) {
-                          generateQuiz();
+                          generateSubjectiveQuiz();
                         }
                       }}
                       disabled={loading}
@@ -2651,9 +2609,9 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
                     <button
                       className="send-btn"
                       type="button"
-                      onClick={generateQuiz}
+                      onClick={generateSubjectiveQuiz}
                       disabled={loading || !selectedFile}
-                      title="Generate quiz"
+                      title="Generate subjective quiz"
                     >
                       Generate
                     </button>
@@ -2671,7 +2629,5 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
     </div>
   );
 }
-
-
 
 
