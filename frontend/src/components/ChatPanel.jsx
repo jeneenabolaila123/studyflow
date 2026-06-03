@@ -86,7 +86,7 @@ export default function ChatPanel({ noteId }) {
       >
         {messages.length === 0 ? (
           <div className="muted" style={{ lineHeight: 1.6 }}>
-            Ask things like: â€œExplain this in simple termsâ€, â€œWhat are the key definitions?â€, â€œGive me examples from the textâ€.
+            Ask things like: “Explain this in simple terms”, “What are the key definitions?”, “Give me examples from the text”.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -102,7 +102,7 @@ export default function ChatPanel({ noteId }) {
             {sending ? (
               <div className="chatBubble chatBubbleAi">
                 <div className="chatBubbleRole">StudyFlow AI</div>
-                <Spinner size="sm" label="Thinkingâ€¦" />
+                <Spinner size="sm" label="Thinking…" />
               </div>
             ) : null}
           </div>
@@ -116,7 +116,7 @@ export default function ChatPanel({ noteId }) {
           className="input"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type your questionâ€¦"
+          placeholder="Type your question…"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();

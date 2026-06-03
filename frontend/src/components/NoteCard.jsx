@@ -144,7 +144,7 @@ export default function NoteCard({
                     </span>
                 )}
                 {note.ai_summary && (
-                    <span className="badge badge-accent">âœ¦ AI Summary</span>
+                    <span className="badge badge-accent">✦ AI Summary</span>
                 )}
             </div>
 

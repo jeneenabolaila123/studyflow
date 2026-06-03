@@ -63,7 +63,7 @@ const NoteSelector = ({ notes, onSelectNote, loading }) => {
                             }}
                             transition={{ duration: 3, repeat: Infinity }}
                         >
-                            ðŸ§  Quiz Challenge
+                            🧠 Quiz Challenge
                         </motion.h1>
                         <p className="text-xl md:text-2xl text-gray-600 leading-relaxed">
                             Select a note to generate quiz questions from:
@@ -89,14 +89,14 @@ const NoteSelector = ({ notes, onSelectNote, loading }) => {
                                     ease: "easeInOut",
                                 }}
                             >
-                                ðŸ“š
+                                📚
                             </motion.div>
                             <p className="text-gray-500 text-2xl mb-4 font-semibold">
                                 No notes available
                             </p>
                             <p className="text-gray-400 text-lg">
                                 Upload some study material first to create
-                                quizzes! âœ¨
+                                quizzes! ✨
                             </p>
                         </motion.div>
                     ) : (
@@ -148,7 +148,7 @@ const NoteSelector = ({ notes, onSelectNote, loading }) => {
                                                 whileHover={{ scale: 1.05 }}
                                                 className="px-3 py-1 bg-emerald-100/80 text-emerald-800 rounded-full text-sm font-medium"
                                             >
-                                                âœ¨ AI Summary
+                                                ✨ AI Summary
                                             </motion.span>
                                         )}
                                     </div>
@@ -180,7 +180,7 @@ const NoteSelector = ({ notes, onSelectNote, loading }) => {
                                 onClick={() => onSelectNote(selectedNoteId)}
                                 className="bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-600 hover:from-purple-600 hover:via-indigo-600 hover:to-blue-700 text-white font-bold py-5 px-10 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 text-lg"
                             >
-                                ðŸš€ Continue to Quiz Setup
+                                🚀 Continue to Quiz Setup
                             </motion.button>
                         </motion.div>
                     )}

@@ -273,7 +273,7 @@ td:first-child {
 }
 
 .ai-advice-panel h2::before {
-  content: "âœ¦ ";
+  content: "✦ ";
   color: #0f766e;
 }
 

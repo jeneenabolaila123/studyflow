@@ -4,6 +4,11 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import ChatMessage, { TypingIndicator } from "../components/ChatMessage.jsx";
 import { PageSpinner } from "../components/Spinner.jsx";
+import StudySheetSummaryCard, {
+    formatStudySheetAsText,
+    normalizeStudySheetSummary,
+    serializeStudySheetSummary,
+} from "../components/StudySheetSummaryCard.jsx";
 
 import {
     getAiConversations,
@@ -36,16 +41,26 @@ export default function NoteDetailsPage() {
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
 
-    const [summaryProvider, setSummaryProvider] = useState("local");
-    const [quizProvider, setQuizProvider] = useState("local");
-    const [askProvider, setAskProvider] = useState("local");
-
     const [summary, setSummary] = useState("");
+    const [summarySheet, setSummarySheet] = useState(null);
     const [summaryFilename, setSummaryFilename] = useState("");
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryTime, setSummaryTime] = useState(null);
-
+    const [apiSummarySections, setApiSummarySections] = useState(null);
+    const [summaryMode, setSummaryMode] = useState(null);
     const [aiError, setAiError] = useState("");
+
+    const [summaryAiMode, setSummaryAiMode] = useState(() => {
+        return localStorage.getItem("studyflow_summary_ai_mode") || "api";
+    });
+
+    const [quizAiMode, setQuizAiMode] = useState(() => {
+        return localStorage.getItem("studyflow_quiz_ai_mode") || "local";
+    });
+
+    const [askAiMode, setAskAiMode] = useState(() => {
+        return localStorage.getItem("studyflow_ask_ai_mode") || "local";
+    });
 
     const [chatSessions, setChatSessions] = useState([]);
     const [activeChatId, setActiveChatId] = useState(null);
@@ -100,32 +115,6 @@ export default function NoteDetailsPage() {
         metadata: message.metadata || {},
         created_at: message.created_at || null,
     });
-
-    const cleanSummaryForDisplay = (text) => {
-        if (!text) return "";
-
-        let cleaned = String(text).trim();
-
-        const cutMarkers = [
-            "\nExpectation",
-            "\nMain Idea\n# Text Summary",
-            "\nShort Summary",
-            "\nRevision / Key Points",
-            "\nImplied Idea",
-            "\nTheme",
-            "\nImportant Quotes",
-        ];
-
-        for (const marker of cutMarkers) {
-            const index = cleaned.indexOf(marker);
-
-            if (index !== -1) {
-                cleaned = cleaned.slice(0, index).trim();
-            }
-        }
-
-        return cleaned;
-    };
 
     useEffect(() => {
         let mounted = true;
@@ -205,6 +194,9 @@ export default function NoteDetailsPage() {
         try {
             setAiError("");
             setSummary("");
+            setSummarySheet(null);
+            setApiSummarySections(null);
+            setSummaryMode(null);
             setSummaryTime(null);
             setSummaryLoading(true);
 
@@ -215,14 +207,7 @@ export default function NoteDetailsPage() {
 
             let res;
 
-            if (summaryProvider === "api") {
-                res = await axiosClient.post("/ai-api/summary", {
-                    note_id: note.id,
-                    title: `Summary of ${
-                        note?.title || note?.original_filename || "this note"
-                    }`,
-                });
-            } else if (hasTextContent) {
+            if (hasTextContent) {
                 res = await axiosClient.post("/local-ai/summary/text", {
                     text: note.text_content,
                     note_id: note.id,
@@ -240,10 +225,8 @@ export default function NoteDetailsPage() {
                 res.data?.summary ||
                 res.data?.output ||
                 res.data?.answer ||
-                res.data?.response ||
                 res.data?.data?.summary ||
                 res.data?.data?.output ||
-                res.data?.data?.response ||
                 "";
 
             if (!summaryText) {
@@ -251,9 +234,25 @@ export default function NoteDetailsPage() {
                 return;
             }
 
-            const cleanedSummary = cleanSummaryForDisplay(summaryText);
+            const displayTitle = `Summary of ${
+                note?.title || note?.original_filename || "this note"
+            }`;
 
-            setSummary(cleanedSummary);
+            const generatedSheet = normalizeStudySheetSummary(
+                {
+                    ...res.data,
+                    summary: summaryText,
+                },
+                {
+                    title: displayTitle,
+                    sourceType: isPdfNote ? "pdf" : "text",
+                    fileName: note?.original_filename || note?.title || "",
+                }
+            );
+
+            setSummary(summaryText);
+            setSummarySheet(generatedSheet);
+            setSummaryMode("local");
 
             setSummaryFilename(
                 note?.original_filename || note?.title || "this note"
@@ -262,11 +261,13 @@ export default function NoteDetailsPage() {
             try {
                 await axiosClient.post("/summaries", {
                     note_id: note.id,
-                    title: `Summary of ${
-                        note?.title || note?.original_filename || "this note"
-                    }`,
+                    title: displayTitle,
                     source_type: isPdfNote ? "pdf" : "text",
-                    summary_text: cleanedSummary,
+                    summary_text: serializeStudySheetSummary(generatedSheet, {
+                        title: displayTitle,
+                        sourceType: isPdfNote ? "pdf" : "text",
+                        fileName: note?.original_filename || note?.title || "",
+                    }),
                 });
 
                 notifyDashboardUpdate("studyflow_ai_summaries_count");
@@ -293,10 +294,7 @@ export default function NoteDetailsPage() {
                 setSummaryTime(seconds);
             }
         } catch (err) {
-            console.error(
-                "SUMMARY ERROR:",
-                err?.response?.data || err.message
-            );
+            console.error("SUMMARY ERROR:", err?.response?.data || err.message);
 
             const errorMessage =
                 err?.response?.data?.message ||
@@ -335,7 +333,18 @@ export default function NoteDetailsPage() {
 
         const outputName = `Summary_of_${safeBase || `note-${id}`}.txt`;
 
-        const blob = new Blob([summary], {
+        const downloadText =
+            summaryMode === "api"
+                ? summary
+                : formatStudySheetAsText(summarySheet || summary, {
+                      title: `Summary of ${
+                          note?.title || note?.original_filename || "this note"
+                      }`,
+                      sourceType: isPdfNote ? "pdf" : "text",
+                      fileName: note?.original_filename || note?.title || "",
+                  });
+
+        const blob = new Blob([downloadText], {
             type: "text/plain;charset=utf-8",
         });
 
@@ -353,9 +362,162 @@ export default function NoteDetailsPage() {
 
     const handleOpenQuizPage = () => {
         notifyDashboardUpdate("studyflow_ai_usage_count");
-        navigate(
-            `/quiz/${id}?type=mcq&difficulty=Mixed&count=5&provider=${quizProvider}`
-        );
+        navigate(`/quiz/${id}?difficulty=Mixed&count=5&aiMode=${quizAiMode}`);
+    };
+
+    const generateSummaryWithApi = async () => {
+        try {
+            setAiError("");
+            setSummary("");
+            setSummarySheet(null);
+            setApiSummarySections(null);
+            setSummaryMode(null);
+            setSummaryTime(null);
+            setSummaryLoading(true);
+
+            if (!canGenerateSummary) {
+                setAiError("No text or PDF found for this note.");
+                return;
+            }
+
+            const res = await axiosClient.post("/ai-api/summary", {
+                note_id: note.id,
+                content: note?.text_content || "",
+            });
+
+            if (!res.data?.success) {
+                throw new Error(res.data?.message || "API summary failed.");
+            }
+
+            const apiSummary = res.data?.summary || {};
+
+            const toList = (value) => {
+                if (Array.isArray(value)) {
+                    return value
+                        .map((item) => String(item).trim())
+                        .filter(Boolean);
+                }
+
+                if (typeof value === "string") {
+                    return value
+                        .split(/\n+/)
+                        .map((item) => item.replace(/^[-•*\d.)\s]+/, "").trim())
+                        .filter(Boolean);
+                }
+
+                return [];
+            };
+
+            const sections = {
+                mainIdeas: toList(apiSummary.main_ideas || res.data?.main_ideas),
+                keyFacts: toList(apiSummary.key_facts || res.data?.key_facts),
+                importantDetails: toList(
+                    apiSummary.important_details || res.data?.important_details
+                ),
+                examRevisionNotes: toList(
+                    apiSummary.exam_revision_notes || res.data?.exam_revision_notes
+                ),
+            };
+
+            const hasAnySection = Object.values(sections).some(
+                (items) => items.length > 0
+            );
+
+            if (!hasAnySection) {
+                setAiError("API summary returned empty sections.");
+                return;
+            }
+
+            const summaryText = [
+                "Main Ideas:",
+                ...sections.mainIdeas.map((item) => `- ${item}`),
+                "",
+                "Key Facts:",
+                ...sections.keyFacts.map((item) => `- ${item}`),
+                "",
+                "Important Details:",
+                ...sections.importantDetails.map((item) => `- ${item}`),
+                "",
+                "Exam Revision Notes:",
+                ...sections.examRevisionNotes.map((item) => `- ${item}`),
+            ].join("\n");
+
+            const displayTitle = `Summary of ${
+                note?.title || note?.original_filename || "this note"
+            }`;
+
+            setSummary(summaryText);
+            setSummarySheet(null);
+            setApiSummarySections(sections);
+            setSummaryMode("api");
+            setSummaryFilename(note?.original_filename || note?.title || "this note");
+
+            try {
+                await axiosClient.post("/summaries", {
+                    note_id: note.id,
+                    title: displayTitle,
+                    source_type: isPdfNote ? "pdf" : "text",
+                    summary_text: summaryText,
+                });
+
+                notifyDashboardUpdate("studyflow_ai_summaries_count");
+            } catch (saveErr) {
+                console.error(
+                    "SAVE API SUMMARY ERROR:",
+                    saveErr?.response?.data || saveErr.message
+                );
+
+                setAiError(
+                    saveErr?.response?.data?.message ||
+                        "API summary generated, but failed to save in My Summaries."
+                );
+            }
+
+            const seconds =
+                res.data?.processing_time_seconds ||
+                res.data?.data?.processing_time_seconds ||
+                null;
+
+            if (seconds) {
+                setSummaryTime(seconds);
+            }
+        } catch (err) {
+            console.error("API SUMMARY ERROR:", err?.response?.data || err.message);
+
+            setAiError(
+                err?.response?.data?.message ||
+                    err?.response?.data?.error ||
+                    "API summary failed. Please try again."
+            );
+        } finally {
+            setSummaryLoading(false);
+        }
+    };
+
+    const handleSummaryAiModeChange = (e) => {
+        const mode = e.target.value;
+        setSummaryAiMode(mode);
+        localStorage.setItem("studyflow_summary_ai_mode", mode);
+    };
+
+    const handleQuizAiModeChange = (e) => {
+        const mode = e.target.value;
+        setQuizAiMode(mode);
+        localStorage.setItem("studyflow_quiz_ai_mode", mode);
+    };
+
+    const handleAskAiModeChange = (e) => {
+        const mode = e.target.value;
+        setAskAiMode(mode);
+        localStorage.setItem("studyflow_ask_ai_mode", mode);
+    };
+
+    const handleGenerateSummaryByMode = () => {
+        if (summaryAiMode === "api") {
+            return generateSummaryWithApi();
+        }
+
+        return generateSummary();
     };
 
     const openChat = async (conversationUuid) => {
@@ -516,6 +678,22 @@ export default function NoteDetailsPage() {
         // Backend saving for like/dislike will be added next.
     };
 
+    const isGreetingMessage = (text) => {
+        const clean = text.trim().toLowerCase();
+
+        return [
+            "hi",
+            "hello",
+            "hey",
+            "hii",
+            "helo",
+            "مرحبا",
+            "marhaba",
+            "salam",
+            "السلام عليكم",
+        ].includes(clean);
+    };
+
     const sendChat = async () => {
         const message = chatInput.trim();
 
@@ -549,7 +727,7 @@ export default function NoteDetailsPage() {
                     metadata: {
                         source: "note-chat",
                         note_id: Number(id),
-                        provider: askProvider,
+                        ai_mode: askAiMode,
                     },
                 }
             );
@@ -559,29 +737,92 @@ export default function NoteDetailsPage() {
                     ...prev,
                     normalizeMessageForDisplay(savedUserResponse.chat_message),
                 ]);
-            }
-
-            let res;
-
-            if (askProvider === "api") {
-                res = await axiosClient.post("/ai-api/ask", {
-                    note_id: note.id,
-                    question: message,
-                });
             } else {
-                res = await axiosClient.post(`/notes/${note.id}/ask-text`, {
-                    question: message,
-                    message: message,
-                    conversation_uuid: conversationUuid,
-                });
+                setChatMessages((prev) => [
+                    ...prev,
+                    {
+                        role: "user",
+                        content: message,
+                        metadata: {
+                            source: "note-chat",
+                            note_id: Number(id),
+                            ai_mode: askAiMode,
+                        },
+                    },
+                ]);
             }
 
-            const reply =
+            if (isGreetingMessage(message)) {
+                const greetingReply =
+                    "Hi! What can I help you with about this note?";
+
+                const savedAssistantResponse = await saveAiConversationMessage(
+                    conversationUuid,
+                    {
+                        role: "assistant",
+                        content: greetingReply,
+                        metadata: {
+                            source: "greeting",
+                            note_id: Number(id),
+                            ai_mode: askAiMode,
+                        },
+                    }
+                );
+
+                if (savedAssistantResponse?.chat_message) {
+                    setChatMessages((prev) => [
+                        ...prev,
+                        normalizeMessageForDisplay(
+                            savedAssistantResponse.chat_message
+                        ),
+                    ]);
+                } else {
+                    setChatMessages((prev) => [
+                        ...prev,
+                        {
+                            role: "ai",
+                            content: greetingReply,
+                            metadata: {
+                                source: "greeting",
+                                note_id: Number(id),
+                                ai_mode: askAiMode,
+                            },
+                        },
+                    ]);
+                }
+
+                await loadChatSessions();
+                return;
+            }
+
+            const res =
+                askAiMode === "api"
+                    ? await axiosClient.post("/ai-api/ask", {
+                          note_id: note.id,
+                          content: note?.text_content || "",
+                          question: message,
+                      })
+                    : await axiosClient.post(`/notes/${note.id}/ask-text`, {
+                          question: message,
+                          message: message,
+                          conversation_uuid: conversationUuid,
+                      });
+
+            let reply =
                 res.data?.answer ||
-                res.data?.response ||
                 res.data?.reply ||
                 res.data?.message ||
                 "No answer returned.";
+
+            if (
+                askAiMode === "api" &&
+                Array.isArray(res.data?.key_points) &&
+                res.data.key_points.length > 0
+            ) {
+                reply +=
+                    "\n\nKey points:\n" +
+                    res.data.key_points.map((point) => `- ${point}`).join("\n");
+            }
 
             const savedAssistantResponse = await saveAiConversationMessage(
                 conversationUuid,
@@ -589,9 +830,9 @@ export default function NoteDetailsPage() {
                     role: "assistant",
                     content: reply,
                     metadata: {
-                        source: askProvider === "api" ? "api-ask" : "ask-text",
+                        source: askAiMode === "api" ? "ask-api" : "ask-text",
                         note_id: Number(id),
-                        provider: askProvider,
+                        ai_mode: askAiMode,
                     },
                 }
             );
@@ -602,6 +843,19 @@ export default function NoteDetailsPage() {
                     normalizeMessageForDisplay(
                         savedAssistantResponse.chat_message
                     ),
+                ]);
+            } else {
+                setChatMessages((prev) => [
+                    ...prev,
+                    {
+                        role: "ai",
+                        content: reply,
+                        metadata: {
+                            source: askAiMode === "api" ? "ask-api" : "ask-text",
+                            note_id: Number(id),
+                            ai_mode: askAiMode,
+                        },
+                    },
                 ]);
             }
 
@@ -674,73 +928,65 @@ export default function NoteDetailsPage() {
 
                 <div
                     className="ai-action-btns"
-                    style={{
-                        display: "flex",
-                        gap: 12,
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                    }}
+                    style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
                 >
-                    <label
+                    <div
                         style={{
                             display: "flex",
-                            alignItems: "center",
                             gap: 8,
-                            fontWeight: 600,
+                            flexWrap: "wrap",
+                            alignItems: "center",
                         }}
                     >
-                        Summary:
                         <select
                             className="input"
-                            value={summaryProvider}
-                            onChange={(e) =>
-                                setSummaryProvider(e.target.value)
-                            }
-                            style={{ minWidth: 130 }}
+                            value={summaryAiMode}
+                            onChange={handleSummaryAiModeChange}
+                            disabled={summaryLoading}
+                            style={{ width: 210 }}
                         >
-                            <option value="local">Local AI</option>
-                            <option value="api">API AI</option>
+                            <option value="api">Summary: API AI</option>
+                            <option value="local">Summary: Local AI</option>
                         </select>
-                    </label>
 
-                    <button
-                        className="btn btn-primary"
-                        onClick={generateSummary}
-                        disabled={summaryLoading || !canGenerateSummary}
-                    >
-                        {summaryLoading ? (
-                            <AiThinking label="Summarizing" />
-                        ) : (
-                            "Generate Summary"
-                        )}
-                    </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleGenerateSummaryByMode}
+                            disabled={summaryLoading || !canGenerateSummary}
+                        >
+                            {summaryLoading ? (
+                                <AiThinking label="Summarizing" />
+                            ) : (
+                                "Generate Summary"
+                            )}
+                        </button>
+                    </div>
 
-                    <label
+                    <div
                         style={{
                             display: "flex",
-                            alignItems: "center",
                             gap: 8,
-                            fontWeight: 600,
+                            flexWrap: "wrap",
+                            alignItems: "center",
                         }}
                     >
-                        Quiz:
                         <select
                             className="input"
-                            value={quizProvider}
-                            onChange={(e) => setQuizProvider(e.target.value)}
-                            style={{ minWidth: 130 }}
+                            value={quizAiMode}
+                            onChange={handleQuizAiModeChange}
+                            style={{ width: 190 }}
                         >
-                            <option value="local">Local AI</option>
-                            <option value="api">API AI</option>
+                            <option value="local">Quiz: Local AI</option>
+                            <option value="api">Quiz: API AI</option>
                         </select>
-                    </label>
 
-                    <button
-                        className="btn btn-primary"
-                        onClick={handleOpenQuizPage}
-                    >
-                        Generate Quiz
-                    </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleOpenQuizPage}
+                        >
+                            Generate Quiz
+                        </button>
+                    </div>
                 </div>
 
                 {!canGenerateSummary && (
@@ -784,10 +1030,10 @@ export default function NoteDetailsPage() {
                     <div
                         style={{
                             marginTop: 20,
-                            padding: "16px 18px",
+                            padding: 0,
                             borderRadius: "14px",
-                            background: "#f8fafc",
-                            border: "1px solid #e5e7eb",
+                            background: "transparent",
+                            border: "none",
                         }}
                     >
                         <div
@@ -829,16 +1075,98 @@ export default function NoteDetailsPage() {
                             </div>
                         )}
 
-                        <div
-                            style={{
-                                whiteSpace: "pre-wrap",
-                                lineHeight: "1.9",
-                                color: "#111827",
-                                fontSize: "15px",
-                            }}
-                        >
-                            {summary}
-                        </div>
+                        {summaryMode === "api" && (
+                            <div
+                                style={{
+                                    marginBottom: 12,
+                                    color: "#16a34a",
+                                    fontWeight: 700,
+                                    fontSize: "14px",
+                                }}
+                            >
+                                API Summary
+                            </div>
+                        )}
+
+                        {summaryMode === "api" && apiSummarySections ? (
+                            <div style={{ display: "grid", gap: 16 }}>
+                                {[
+                                    ["Main Ideas", apiSummarySections.mainIdeas],
+                                    ["Key Facts", apiSummarySections.keyFacts],
+                                    [
+                                        "Important Details",
+                                        apiSummarySections.importantDetails,
+                                    ],
+                                    [
+                                        "Exam Revision Notes",
+                                        apiSummarySections.examRevisionNotes,
+                                    ],
+                                ].map(([sectionTitle, items]) => (
+                                    <div
+                                        key={sectionTitle}
+                                        style={{
+                                            padding: 16,
+                                            borderRadius: 14,
+                                            background: "#ffffff",
+                                            border: "1px solid #e5e7eb",
+                                        }}
+                                    >
+                                        <h4
+                                            style={{
+                                                marginTop: 0,
+                                                marginBottom: 10,
+                                            }}
+                                        >
+                                            {sectionTitle}
+                                        </h4>
+
+                                        {items?.length > 0 ? (
+                                            <ul
+                                                style={{
+                                                    marginBottom: 0,
+                                                    paddingLeft: 20,
+                                                }}
+                                            >
+                                                {items.map((item, index) => (
+                                                    <li
+                                                        key={index}
+                                                        style={{ marginBottom: 8 }}
+                                                    >
+                                                        {item}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p
+                                                style={{
+                                                    marginBottom: 0,
+                                                    color: "#6b7280",
+                                                }}
+                                            >
+                                                No points returned for this section.
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <StudySheetSummaryCard
+                                summary={summarySheet || summary}
+                                title={`Summary of ${
+                                    summaryFilename ||
+                                    note?.original_filename ||
+                                    "this note"
+                                }`}
+                                sourceLabel={
+                                    isPdfNote ? "PDF Summary" : "Text Summary"
+                                }
+                                meta={[
+                                    summaryTime
+                                        ? { label: `${summaryTime}s` }
+                                        : null,
+                                ].filter(Boolean)}
+                            />
+                        )}
                     </div>
                 )}
             </div>
@@ -992,38 +1320,18 @@ export default function NoteDetailsPage() {
                             <div ref={chatEndRef} />
                         </div>
 
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "flex-end",
-                                margin: "10px 0",
-                            }}
-                        >
-                            <label
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 8,
-                                    fontWeight: 600,
-                                    fontSize: 14,
-                                }}
-                            >
-                                Ask:
-                                <select
-                                    className="input"
-                                    value={askProvider}
-                                    onChange={(e) =>
-                                        setAskProvider(e.target.value)
-                                    }
-                                    style={{ minWidth: 130 }}
-                                >
-                                    <option value="local">Local AI</option>
-                                    <option value="api">API AI</option>
-                                </select>
-                            </label>
-                        </div>
-
                         <div className="chat-input-area">
+                            <select
+                                className="input"
+                                value={askAiMode}
+                                onChange={handleAskAiModeChange}
+                                disabled={chatLoading}
+                                style={{ maxWidth: 150 }}
+                            >
+                                <option value="local">Local AI</option>
+                                <option value="api">API AI</option>
+                            </select>
+
                             <input
                                 className="input"
                                 value={chatInput}
@@ -1033,7 +1341,11 @@ export default function NoteDetailsPage() {
                                         sendChat();
                                     }
                                 }}
-                                placeholder="Ask about this note..."
+                                placeholder={
+                                    askAiMode === "api"
+                                        ? "Ask with API about this note..."
+                                        : "Ask locally about this note..."
+                                }
                                 disabled={chatLoading}
                             />
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import Spinner, { PageSpinner } from "../components/Spinner.jsx";
+import { formatStudySheetAsText } from "../components/StudySheetSummaryCard.jsx";
 
 function SearchIcon() {
     return (
@@ -106,7 +107,7 @@ function TrashIcon() {
 function previewText(text, maxLen = 220) {
     const t = (text || "").replace(/\s+/g, " ").trim();
     if (t.length <= maxLen) return t;
-    return t.slice(0, maxLen - 1) + "â€¦";
+    return t.slice(0, maxLen - 1) + "…";
 }
 
 function formatDate(iso) {
@@ -203,7 +204,12 @@ export default function SummariesPage() {
     };
 
     const handleCopy = async (summary) => {
-        const ok = await copyToClipboard(summary.summary_text);
+        const ok = await copyToClipboard(
+            formatStudySheetAsText(summary.summary_text, {
+                title: summary.title,
+                sourceType: summary.source_type,
+            })
+        );
         if (!ok) {
             alert("Copy failed.");
             return;
@@ -266,7 +272,7 @@ export default function SummariesPage() {
                         <input
                             className="input"
                             style={{ paddingLeft: 34 }}
-                            placeholder="Search summariesâ€¦"
+                            placeholder="Search summaries…"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -280,7 +286,7 @@ export default function SummariesPage() {
                     >
                         <option value="newest">Newest first</option>
                         <option value="oldest">Oldest first</option>
-                        <option value="title">Title (Aâ€“Z)</option>
+                        <option value="title">Title (A–Z)</option>
                     </select>
                 </div>
             )}
@@ -345,7 +351,15 @@ export default function SummariesPage() {
                                         className="note-card-desc"
                                         style={{ marginTop: 6 }}
                                     >
-                                        {previewText(s.summary_text)}
+                                        {previewText(
+                                            formatStudySheetAsText(
+                                                s.summary_text,
+                                                {
+                                                    title: s.title,
+                                                    sourceType: s.source_type,
+                                                }
+                                            )
+                                        )}
                                     </div>
                                 </div>
                             </div>

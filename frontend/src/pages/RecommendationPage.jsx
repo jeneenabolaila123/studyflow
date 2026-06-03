@@ -1,14 +1,81 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./RecommendationPage.css";
 import axiosClient from "../axiosClient";
 
+function normalizeRecommendation(raw) {
+  if (!raw) return null;
+
+  const total = Number(raw.total || 0);
+  const score = Number(raw.score || raw.correctAnswers || raw.completed || 0);
+
+  const percentage =
+    raw.percentage ??
+    raw.latestScore ??
+    (total > 0 ? Math.round((score / total) * 100) : 0);
+
+  const wrongQuestions = Array.isArray(raw.weakQuestions)
+    ? raw.weakQuestions
+    : [];
+
+  const weakTopics =
+    Array.isArray(raw.weakTopics) && raw.weakTopics.length > 0
+      ? raw.weakTopics
+      : wrongQuestions.map((item) => ({
+          topic: `Weak Question ${item.number}`,
+          score: 0,
+          wrongCount: 1,
+          total: 1,
+          priority: "High",
+
+          question: item.question,
+          selectedAnswer: item.selectedAnswer,
+          selectedAnswerText: item.selectedAnswerText,
+          correctAnswer: item.correctAnswer,
+          correctAnswerText: item.correctAnswerText,
+          explanation: item.explanation,
+
+          wrongQuestions: [item],
+          reviewText: item.explanation || item.question,
+          reason: "You answered this question incorrectly.",
+          nextStep:
+            "Review this concept from the uploaded PDF, then try another focused quiz.",
+        }));
+
+  return {
+    ...raw,
+
+    latestScore: percentage,
+    previousScore: raw.previousScore ?? 0,
+    improvement: raw.improvement ?? percentage,
+    averageScore: raw.averageScore ?? percentage,
+
+    completed: raw.completed ?? raw.correctAnswers ?? score,
+    correctAnswers: raw.correctAnswers ?? raw.completed ?? score,
+
+    highPriority: raw.highPriority ?? weakTopics.length,
+
+    recommendedFocus:
+      raw.recommendedFocus ||
+      weakTopics[0]?.topic ||
+      "Great job. No weak questions found.",
+
+    weakQuestions: wrongQuestions,
+    weakTopics,
+  };
+}
+
 function getSavedRecommendation(locationState) {
-  if (locationState?.recommendation) return locationState.recommendation;
+  if (locationState?.recommendation) {
+    return normalizeRecommendation(locationState.recommendation);
+  }
 
   try {
+    const latest = localStorage.getItem("studyflow_latest_quiz_recommendation");
+    if (latest) return normalizeRecommendation(JSON.parse(latest));
+
     const saved = localStorage.getItem("studyflow_recommendation");
-    if (saved) return JSON.parse(saved);
+    if (saved) return normalizeRecommendation(JSON.parse(saved));
   } catch {
     return null;
   }
@@ -30,18 +97,20 @@ function StatCard({ icon, label, value, color }) {
 
 function PriorityBadge({ value }) {
   const type = String(value || "Medium").toLowerCase();
+
   return <span className={`priority-badge ${type}`}>{value}</span>;
 }
 
 function getNumber(value) {
   const num = Number(value);
+
   return Number.isNaN(num) ? null : num;
 }
 
 function uniqueNumbers(values = []) {
-  return [...new Set(values.map(getNumber).filter((value) => value !== null))].sort(
-    (a, b) => a - b
-  );
+  return [
+    ...new Set(values.map(getNumber).filter((value) => value !== null)),
+  ].sort((a, b) => a - b);
 }
 
 function getQuestionSlides(question = {}) {
@@ -100,7 +169,9 @@ function getItemSlides(item = {}) {
   ]);
 
   const wrongSlides = uniqueNumbers(
-    (item.wrongQuestions || []).flatMap((question) => getQuestionSlides(question))
+    (item.wrongQuestions || []).flatMap((question) =>
+      getQuestionSlides(question)
+    )
   );
 
   return wrongSlides.length ? wrongSlides : directSlides;
@@ -127,6 +198,8 @@ function getReviewText(item = {}) {
 
   if (slides.length > 1) return `Slides ${slides.join(", ")}`;
 
+  if (item.reviewText) return item.reviewText;
+
   if (item.reviewSource && !String(item.reviewSource).includes("Topic:")) {
     return item.reviewSource;
   }
@@ -144,9 +217,10 @@ function getSourceText(data, item = {}) {
     item.note_title ||
     data.noteTitle ||
     data.quizTitle ||
+    data.title ||
     "same uploaded note";
 
-  return `Same note: ${noteTitle} â€¢ Topic: ${item.topic || "Current Topic"}`;
+  return `Same note: ${noteTitle} • Topic: ${item.topic || "Current Topic"}`;
 }
 
 function getNoteId(data, item = {}) {
@@ -174,6 +248,7 @@ function buildFocus(data, item = {}) {
       item.note_title ||
       data.noteTitle ||
       data.quizTitle ||
+      data.title ||
       data.pdfTitle ||
       data.pdf_title ||
       "",
@@ -193,7 +268,9 @@ function buildFocus(data, item = {}) {
 
     askPdfPrompt:
       item.askPdfPrompt ||
-      `Explain ${item.topic || data.recommendedFocus || "this topic"} from this uploaded note.`,
+      `Explain ${
+        item.topic || data.recommendedFocus || "this topic"
+      } from this uploaded note.`,
 
     recommendation: item,
   };
@@ -226,6 +303,7 @@ function saveLogoutRecommendationEmail(data, item = {}) {
     focus.noteTitle ||
     data.noteTitle ||
     data.quizTitle ||
+    data.title ||
     data.pdfTitle ||
     data.pdf_title ||
     "Your uploaded PDF";
@@ -253,6 +331,8 @@ function WeakTopicCard({ data, item, selected, onSelect }) {
   const wrongCount = Number(item.wrongCount || 0);
   const total = Number(item.total || 0);
   const wrongQuestion = item.wrongQuestions?.[0]?.question || "";
+  const wrongAnswer = item.wrongQuestions?.[0]?.selectedAnswer || "";
+  const correctAnswer = item.wrongQuestions?.[0]?.correctAnswer || "";
 
   return (
     <article
@@ -308,9 +388,7 @@ function WeakTopicCard({ data, item, selected, onSelect }) {
 
         <div className="compact-rec-box">
           <span>Why</span>
-          <p>
-            {item.reason || "You answered this part incorrectly in the quiz."}
-          </p>
+          <p>{item.reason || "You answered this part incorrectly in the quiz."}</p>
         </div>
       </div>
 
@@ -318,6 +396,14 @@ function WeakTopicCard({ data, item, selected, onSelect }) {
         <div className="wrong-question-line">
           <span>Wrong Answer Focus</span>
           <p>{wrongQuestion}</p>
+
+          {(wrongAnswer || correctAnswer) && (
+            <p>
+              {wrongAnswer && <strong>Your answer: {wrongAnswer}</strong>}
+              {wrongAnswer && correctAnswer && " | "}
+              {correctAnswer && <strong>Correct: {correctAnswer}</strong>}
+            </p>
+          )}
         </div>
       )}
     </article>
@@ -328,74 +414,42 @@ export default function RecommendationPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const data = getSavedRecommendation(location.state);
+  const data = useMemo(() => {
+    return getSavedRecommendation(location.state);
+  }, [location.state]);
+
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const weakTopics = data?.weakTopics || [];
   const selectedWeakTopic = weakTopics[selectedIndex] || weakTopics[0] || {};
+  const saveRecommendationsForEmail = async (items) => {
+  try {
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("auth_token") ||
+      localStorage.getItem("access_token");
 
-  const saveRecommendationsForEmail = async (items = []) => {
-    try {
-      if (!data || !Array.isArray(items) || items.length === 0) return;
-
-      const cleaned = items
-        .map((item) => {
-          const focus = buildFocus(data, item);
-          const slides = getItemSlides(item);
-          const firstSlide = slides.length > 0 ? slides[0] : null;
-
-          return {
-            note_id: focus.noteId || null,
-
-            pdf_title:
-              focus.noteTitle ||
-              data.noteTitle ||
-              data.quizTitle ||
-              data.pdfTitle ||
-              data.pdf_title ||
-              "Your uploaded PDF",
-
-            slide_number: firstSlide,
-            page_number: firstSlide,
-
-            slide_title:
-              item.topic || data.recommendedFocus || "Recommended weak point",
-
-            reason:
-              item.reason ||
-              `${getSourceText(
-                data,
-                item
-              )}. You answered this part incorrectly, so StudyFlow recommends reviewing it.`,
-
-            action_url: focus.noteId
-              ? `${window.location.origin}/notes/${focus.noteId}`
-              : `${window.location.origin}`,
-          };
-        })
-        .filter((item) => {
-          return (
-            item.slide_number ||
-            item.page_number ||
-            item.slide_title ||
-            item.reason
-          );
-        });
-
-      if (cleaned.length === 0) return;
-
-      console.log("Saving recommendations for email:", cleaned);
-
-      await axiosClient.post("/study-recommendations", {
-        recommendations: cleaned,
-      });
-    } catch (error) {
-      console.error("Failed to save recommendations for email:", error);
+    if (!token) {
+      console.warn("Skip saving recommendations for email: user is not authenticated.");
+      return;
     }
-  };
+
+    await axiosClient.post("/recommendations/email/save", {
+      recommendations: items,
+    });
+  } catch (error) {
+    if (error?.response?.status === 401) {
+      console.warn("Skip saving recommendations for email: unauthenticated.");
+      return;
+    }
+
+    console.error("Failed to save recommendations for email:", error);
+  }
+};
+
 
   useEffect(() => {
-    if (data && selectedWeakTopic) {
+    if (data && selectedWeakTopic && Object.keys(selectedWeakTopic).length > 0) {
       saveLogoutRecommendationEmail(data, selectedWeakTopic);
       saveRecommendationsForEmail([selectedWeakTopic]);
     }
@@ -560,28 +614,28 @@ export default function RecommendationPage() {
 
         <section className="rec-stats-grid">
           <StatCard
-            icon="â˜°"
+            icon="☰"
             label="Weak Areas"
             value={weakTopics.length || 0}
             color="blue"
           />
 
           <StatCard
-            icon="âš‘"
+            icon="⚑"
             label="High Priority"
             value={data.highPriority || 0}
             color="red"
           />
 
           <StatCard
-            icon="âœ“"
+            icon="✓"
             label="Correct Answers"
-            value={data.completed || 0}
+            value={data.correctAnswers ?? data.completed ?? data.score ?? 0}
             color="green"
           />
 
           <StatCard
-            icon="âŒ"
+            icon="⌁"
             label="Avg Score"
             value={`${data.averageScore || data.latestScore || 0}%`}
             color="purple"
@@ -592,17 +646,24 @@ export default function RecommendationPage() {
           <article className="panel weak-topics-panel">
             <h2>What You Should Review</h2>
 
-            <div className="weak-topic-list">
-              {weakTopics.map((item, index) => (
-                <WeakTopicCard
-                  key={`${item.topic}-${item.score}-${item.priority}-${index}`}
-                  data={data}
-                  item={item}
-                  selected={index === selectedIndex}
-                  onSelect={() => setSelectedIndex(index)}
-                />
-              ))}
-            </div>
+            {weakTopics.length > 0 ? (
+              <div className="weak-topic-list">
+                {weakTopics.map((item, index) => (
+                  <WeakTopicCard
+                    key={`${item.topic}-${item.score}-${item.priority}-${index}`}
+                    data={data}
+                    item={item}
+                    selected={index === selectedIndex}
+                    onSelect={() => setSelectedIndex(index)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="empty-recommendation panel">
+                <h3>Great job!</h3>
+                <p>No weak questions found from your latest quiz.</p>
+              </div>
+            )}
           </article>
 
           <article className="panel ai-advice-panel">
@@ -631,6 +692,7 @@ export default function RecommendationPage() {
               <button
                 type="button"
                 onClick={() => handleReviewSummary(selectedWeakTopic)}
+                disabled={weakTopics.length === 0}
               >
                 Review Summary
               </button>
@@ -639,6 +701,7 @@ export default function RecommendationPage() {
                 type="button"
                 className="primary-action"
                 onClick={() => handleGenerateQuiz(selectedWeakTopic)}
+                disabled={weakTopics.length === 0}
               >
                 Generate Quiz
               </button>
@@ -646,6 +709,7 @@ export default function RecommendationPage() {
               <button
                 type="button"
                 onClick={() => handleAskPdf(selectedWeakTopic)}
+                disabled={weakTopics.length === 0}
               >
                 Ask PDF
               </button>

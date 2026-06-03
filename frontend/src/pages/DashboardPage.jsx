@@ -210,7 +210,7 @@ function truncate(text, max = 88) {
     const t = String(text || "").trim();
     if (!t) return "";
     if (t.length <= max) return t;
-    return `${t.slice(0, max - 1)}â€¦`;
+    return `${t.slice(0, max - 1)}…`;
 }
 
 function extractArrayFromApi(response) {
@@ -226,6 +226,39 @@ function extractArrayFromApi(response) {
     return Array.isArray(data) ? data : [];
 }
 
+function logDashboardNotesError(err) {
+    console.error("DASHBOARD NOTES LOAD ERROR:", {
+        baseURL: err?.config?.baseURL,
+        url: err?.config?.url,
+        method: err?.config?.method,
+        status: err?.response?.status,
+        body: err?.response?.data,
+        message: err?.message,
+    });
+}
+
+function AnnouncementBanner({ announcement }) {
+    if (!announcement) return null;
+
+    return (
+        <div className="announcement-banner">
+            <div className="announcement-bell-wrap">
+                <span className="announcement-bell">🔔</span>
+                <span className="announcement-pulse" />
+            </div>
+
+            <div className="announcement-content">
+                <div className="announcement-title">
+                    {announcement.title || "New announcement"}
+                </div>
+
+                <p className="announcement-text">
+                    {announcement.message || announcement.body || ""}
+                </p>
+            </div>
+        </div>
+    );
+}
 // ---- Main component ------------------------------------------------
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -234,7 +267,7 @@ export default function DashboardPage() {
     const [summaries, setSummaries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-
+const [latestAnnouncement, setLatestAnnouncement] = useState(null);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [file, setFile] = useState(null);
@@ -257,15 +290,30 @@ export default function DashboardPage() {
         setError("");
 
         try {
+            const authToken = localStorage.getItem("authToken");
+
+            console.log("DASHBOARD NOTES REQUEST:", {
+                url: "/notes",
+                method: "get",
+                hasToken: Boolean(authToken),
+                tokenStart: authToken ? authToken.slice(0, 10) : null,
+            });
+
             const [notesResult, summariesResult] = await Promise.allSettled([
                 axiosClient.get("/notes"),
                 axiosClient.get("/summaries"),
             ]);
 
             if (notesResult.status === "fulfilled") {
+                console.log("DASHBOARD NOTES RESPONSE:", {
+                    status: notesResult.value?.status,
+                    body: notesResult.value?.data,
+                });
+
                 setNotes(extractArrayFromApi(notesResult.value));
             } else {
                 const err = notesResult.reason;
+                logDashboardNotesError(err);
 
                 if (err?.response?.status !== 401) {
                     setError(
@@ -300,7 +348,19 @@ export default function DashboardPage() {
             // silent: dashboard should still load even if recommendations fail
         }
     }, []);
+const loadLatestAnnouncement = useCallback(async () => {
+    try {
+        const res = await axiosClient.get("/announcements");
 
+        const payload = res.data?.data || res.data || [];
+        const list = Array.isArray(payload) ? payload : payload.announcements || [];
+
+        setLatestAnnouncement(list[0] || null);
+    } catch (err) {
+        console.log("Announcement load error:", err.response?.data || err.message);
+        setLatestAnnouncement(null);
+    }
+}, []);
     const loadDashboardStats = useCallback(async () => {
         try {
             const res = await axiosClient.get("/dashboard");
@@ -337,7 +397,9 @@ export default function DashboardPage() {
     useEffect(() => {
         loadDashboardStats();
     }, [loadDashboardStats]);
-
+useEffect(() => {
+    loadLatestAnnouncement();
+}, [loadLatestAnnouncement]);
     const handleDragOver = (e) => {
         e.preventDefault();
         setIsDragging(true);
@@ -465,17 +527,18 @@ export default function DashboardPage() {
 
     return (
         <div className="dashboard-page dash-fade-in">
-            <div className="page-header">
-                <h1>
-                    Good day, {firstName} <span className="wave">ðŸ‘‹</span>
-                </h1>
-                <p className="page-header-sub">
-                    Upload study material or paste notes â€” your AI will handle
-                    the rest.
-                </p>
-            </div>
+          <div className="page-header">
+    <h1>
+        Good day, {firstName} <span className="wave">👋</span>
+    </h1>
+    <p className="page-header-sub">
+        Upload study material or paste notes — your AI will handle
+        the rest.
+    </p>
+</div>
 
-            {error && <div className="alert alert-error">{error}</div>}
+<AnnouncementBanner announcement={latestAnnouncement} />
+{error && <div className="alert alert-error">{error}</div>}
 
             <div className="stats-grid">
                 <StatCard
@@ -534,7 +597,7 @@ export default function DashboardPage() {
                                     filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
                                 }}
                             >
-                                ðŸ§ 
+                                🧠
                             </div>
 
                             <div>
@@ -600,7 +663,7 @@ export default function DashboardPage() {
                                 e.currentTarget.style.transform = "translateY(0)";
                             }}
                         >
-                            <span style={{ marginRight: "8px" }}>ðŸš€</span>
+                            <span style={{ marginRight: "8px" }}>🚀</span>
                             Start Quiz Challenge
                         </Link>
                     </div>
@@ -645,7 +708,7 @@ export default function DashboardPage() {
 
                             <input
                                 className="upload-input"
-                                placeholder="e.g. Chapter 3 â€” Thermodynamics"
+                                placeholder="e.g. Chapter 3 — Thermodynamics"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                             />
@@ -659,7 +722,7 @@ export default function DashboardPage() {
 
                             <input
                                 className="upload-input"
-                                placeholder="Brief descriptionâ€¦"
+                                placeholder="Brief description…"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                             />
@@ -704,7 +767,7 @@ export default function DashboardPage() {
                                         setFile(null);
                                     }}
                                 >
-                                    âœ• Remove
+                                    ✕ Remove
                                 </button>
                             </div>
                         ) : (
@@ -732,7 +795,7 @@ export default function DashboardPage() {
 
                     <textarea
                         className="upload-textarea"
-                        placeholder="Paste or write your study notes hereâ€¦"
+                        placeholder="Paste or write your study notes here…"
                         value={text_content}
                         onChange={(e) => setTextContent(e.target.value)}
                         rows={5}
@@ -773,7 +836,7 @@ export default function DashboardPage() {
                             <SparklesIcon />
                         )}
 
-                        {uploading ? "Uploadingâ€¦" : "Upload Note"}
+                        {uploading ? "Uploading…" : "Upload Note"}
                     </button>
                 </form>
             </div>
@@ -846,7 +909,7 @@ export default function DashboardPage() {
                 ) : (
                     weakTopics.slice(0, 4).map((t) => (
                         <div key={t.id} className="recent-note">
-                            <div className="recent-note-left">ðŸŽ¯</div>
+                            <div className="recent-note-left">🎯</div>
 
                             <div className="recent-note-content">
                                 <div className="recent-note-title">
