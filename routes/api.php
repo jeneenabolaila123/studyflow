@@ -19,7 +19,6 @@ use App\Http\Controllers\Api\Admin\AdminNotesController;
 use App\Http\Controllers\Api\LinkSummaryController;
 use App\Http\Controllers\Api\AiConversationController;
 use App\Http\Controllers\ApiAiController;
-use App\Http\Controllers\Api\OllamaPdfRagController;
 
 /*
 |--------------------------------------------------------------------------
@@ -79,12 +78,6 @@ Route::prefix('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-
-
-Route::post('/ollama-rag/upload', [OllamaPdfRagController::class, 'upload']);
-Route::post('/ollama-rag/quiz/mcq', [OllamaPdfRagController::class, 'mcq']);
-Route::post('/ollama-rag/upload', [OllamaPdfRagController::class, 'upload']);
-Route::post('/ollama-rag/quiz/mcq', [OllamaPdfRagController::class, 'mcq']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/ai/conversations', [AiConversationController::class, 'index']);
     Route::post('/ai/conversations', [AiConversationController::class, 'store']);

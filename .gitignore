@@ -53,4 +53,3 @@ ai-service/ollama_pdf_rag/src/data/vectors/
 ai-service/ollama_pdf_rag/src/data/pdfs/uploads/
 ai-service/ollama_pdf_rag/src/app/main_old_friend_version.py
 ai-service/ollama_pdf_rag/src/app/main_old_friend_version.py
-src/app/main_old_friend_version.py
