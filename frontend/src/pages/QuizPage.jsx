@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ScreenRecorderMenu from "../components/ScreenRecorderMenu";
 const PDF_RAG_URL = "http://127.0.0.1:8016";
@@ -1109,178 +1109,51 @@ const saveCachedPdf = (fileName, pdfId) => {
         }
       }
 
-      if (!pdfId) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
+      setStatus("Sending PDF to AI Tutor API...");
 
-        const uploadResponse = await fetchWithFrontendTimeout(
-          `${PDF_RAG_URL}/api/v1/pdfs/upload`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
+const formData = new FormData();
+formData.append("file", selectedFile);
+formData.append("type", "mcq");
+formData.append("quiz_type", "mcq");
+formData.append("question_type", "mcq");
+formData.append("count", "5");
+formData.append("num_questions", "5");
 
-        if (!uploadResponse.ok) {
-          const text = await uploadResponse.text();
-          throw new Error(`PDF upload failed: ${text}`);
-        }
-
-        const uploadData = await uploadResponse.json();
-        console.log("UPLOAD DATA", uploadData);
-
-        pdfId =
-          uploadData.pdf_id ||
-          uploadData.doc_id ||
-          uploadData.docId ||
-          uploadData.document_id ||
-          uploadData.id;
-
-        if (!pdfId) {
-          throw new Error("PDF uploaded, but no pdf_id/doc_id/docId/document_id/id was returned.");
-        }
-
-        setUploadedPdfId(pdfId);
-        saveCachedPdf(selectedFile.name, pdfId);
-      }
-
-      console.log("PDF ID USED", pdfId);
-
-      const promptText = `
-Create a lightweight quiz from the uploaded PDF content.
-Return valid JSON only.
-No markdown.
-No extra text before or after JSON.
-
-Use exactly this JSON shape:
-{
-  "questions": [
-    {
-      "question": "Question text",
-      "options": {
-        "A": "short option",
-        "B": "short option",
-        "C": "short option",
-        "D": "short option"
-      },
-      "correctAnswer": "A",
-      "explanation": "short explanation"
-    }
-  ]
+if (customPrompt?.trim()) {
+  formData.append("prompt", customPrompt.trim());
 }
 
-Rules:
-- Generate exactly 5 MCQs.
-- Use only the uploaded PDF content.
-- Return valid JSON only.
-- No markdown.
-- No extra text before or after JSON.
-- correctAnswer must be A, B, C, or D only.
-- Put the answer only in correctAnswer; do not reveal it in the question or option text.
-- Do not create duplicate questions.
-- Do not create duplicate or near-duplicate options.
-- Each question must have exactly four options: A, B, C, and D.
-- Keep questions, options, and explanations short for local Ollama llama3.2:3b on 8GB RAM.
-${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
-`.trim();
+const token =
+  localStorage.getItem("token") ||
+  localStorage.getItem("auth_token") ||
+  localStorage.getItem("authToken") ||
+  localStorage.getItem("studyflow_token");
 
-      const EXTRACT_QUIZ_TEXT = (quizData) => {
-        console.log("RAW QUIZ DATA:", quizData);
+const quizResponse = await fetchWithFrontendTimeout(
+  "http://127.0.0.1:8000/api/ai-tutor/generate-quiz",
+  {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  }
+);
 
-        const candidates = [
-          quizData.quiz_text,
-          quizData.generated_quiz,
-          quizData.generated_text,
-          quizData.output,
-          quizData.response,
-          quizData.answer,
-          quizData.text,
-          quizData.quiz,
-          quizData.data?.quiz_text,
-          quizData.data?.generated_quiz,
-          quizData.data?.generated_text,
-          quizData.data?.output,
-          quizData.data?.response,
-          quizData.data?.answer,
-          quizData.data?.text,
-          quizData.result?.quiz_text,
-          quizData.result?.generated_quiz,
-          quizData.result?.generated_text,
-          quizData.result?.output,
-          quizData.result?.response,
-          quizData.result?.answer,
-          quizData.result?.text,
-          quizData.result,
-        ];
+if (!quizResponse.ok) {
+  const text = await quizResponse.text();
+  throw new Error(`Quiz generation failed: ${text}`);
+}
 
-        const normalizeText = (value) => {
-          if (!value) return "";
-          if (typeof value === "string") return value.trim();
-          if (typeof value === "object") return JSON.stringify(value, null, 2);
-          return String(value).trim();
-        };
+const quizResponseText = await quizResponse.text();
+let quizData;
 
-        const texts = candidates.map(normalizeText).filter(Boolean);
-
-        const looksLikeMcq = (text) => {
-          const hasQ1 =
-            /(?:^|\n)\s*(?:Q\s*1|Quiz\s*1|Question\s*1)\s*(?:\([^)]+\))?\s*[:.)-]/i.test(
-              text
-            );
-
-          const hasOptionA =
-            /\n\s*(?:[-*•]\s*)?A\s*[.)]/i.test(text);
-
-          const hasCorrect = /Correct\s*answer\s*:/i.test(text);
-
-          return hasQ1 && hasOptionA && hasCorrect;
-        };
-
-        const mcqText = texts.find(looksLikeMcq);
-
-        if (mcqText) {
-          return mcqText
-            .replace(
-              /^.*?(?=(?:^|\n)\s*(?:Q\s*1|Quiz\s*1|Question\s*1)\s*(?:\([^)]+\))?\s*[:.)-])/is,
-              ""
-            )
-            .trim();
-        }
-
-        return texts[0] || "";
-      };
-
-      setStatus("Generating 5 MCQs from the PDF...");
-
-      const queryPayload = {
-        question: promptText,
-        model: selectedModel,
-        pdf_ids: [pdfId],
-      };
-
-      console.log("QUERY PAYLOAD", queryPayload);
-
-      const quizResponse = await fetchWithFrontendTimeout(`${PDF_RAG_URL}/api/v1/query`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(queryPayload),
-      });
-
-      if (!quizResponse.ok) {
-        const text = await quizResponse.text();
-        throw new Error(`Quiz generation failed: ${text}`);
-      }
-
-      const quizResponseText = await quizResponse.text();
-      let quizData;
-
-      try {
-        quizData = JSON.parse(quizResponseText);
-      } catch {
-        quizData = { answer: quizResponseText };
-      }
+try {
+  quizData = JSON.parse(quizResponseText);
+} catch {
+  quizData = { answer: quizResponseText };
+}
 
       const responseData = quizData ?? {};
 

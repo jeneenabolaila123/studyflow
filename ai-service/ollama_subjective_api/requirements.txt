@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+streamlit
+ollama
+pdfplumber
+pytesseract
+pillow
+chromadb
+pypdf
+langchain
+langchain-community
+langchain-core
+langchain-text-splitters
+langchain-classic
+langchain-ollama

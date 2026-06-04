@@ -1,4 +1,4 @@
-﻿"""
+"""
 Streamlit application for PDF-based Retrieval-Augmented Generation (RAG) using Ollama + LangChain.
 
 This application allows users to upload a PDF, process it,
@@ -113,12 +113,6 @@ MCQ_ALLOW_FREE_TEXT_FALLBACK = True
 # The previous slowdown was caused by schema response extraction failing, then backup JSON taking ~11 minutes.
 MCQ_USE_JSON_BACKUP = False
 MCQ_STRUCTURED_RETRIES = 1
-
-# Definition-heavy PDF fallback.
-# Keep the normal strict pipeline unchanged for large PDFs.
-# These extra attempts run ONLY when the strict validator cannot reach 5 safe MCQs.
-MCQ_ALLOW_DEFINITION_FALLBACK = True
-MCQ_DEFINITION_FALLBACK_RETRIES = 2
 
 # Final MCQ context composition. Total should be close to MCQ_CONTEXT_CHUNKS.
 # This helps the quiz use the whole PDF while still staying relevant.
@@ -888,25 +882,14 @@ BAD_OPTION_PATTERNS = [
 
 # Tournament-9 stem filter: reject memorization-style stems before they reach the UI.
 # This stays generic: it blocks weak wording, not domain-specific facts.
-# Stems that should stay blocked in every mode.
-BAD_QUESTION_STEM_ALWAYS_PATTERNS = [
+BAD_QUESTION_STEM_PATTERNS = [
     r"\bprimary\s+(goal|purpose|aim|objective|reason|role|function)\b",
     r"\bmain\s+(goal|purpose|aim|objective|reason|role|function|idea)\b",
     r"\bwhat\s+is\s+one\s+(common\s+)?(application|use|type|example)\b",
-    r"\bwhich\s+of\s+the\s+following\s+is\s+(not\s+)?(a|an)?\s*(example|type|application)\b",
-]
-
-# These are blocked in normal mode, but allowed only after strict generation fails.
-# This fixes small PDFs that are mostly definitions without weakening large PDFs.
-BAD_QUESTION_STEM_DEFINITION_PATTERNS = [
-    r"\bwhich\s+of\s+the\s+following\s+is\s+(not\s+)?(a|an)?\s*definition\b",
+    r"\bwhich\s+of\s+the\s+following\s+is\s+(not\s+)?(a|an)?\s*(example|type|application|definition)\b",
     r"\bwhat\s+is\s+the\s+definition\s+of\b",
     r"\bdefine\b",
 ]
-
-BAD_QUESTION_STEM_PATTERNS = (
-    BAD_QUESTION_STEM_ALWAYS_PATTERNS + BAD_QUESTION_STEM_DEFINITION_PATTERNS
-)
 
 FORBIDDEN_UNGROUNDED_LANGUAGE = [
     "according to general knowledge",
@@ -1012,24 +995,12 @@ def has_bad_mcq_option(options: Dict[str, Any]) -> bool:
     return False
 
 
-def is_bad_mcq_question_stem(question_text: str, allow_definition_fallback: bool = False) -> bool:
-    """Reject weak memorization stems.
-
-    Normal mode blocks definition-style stems.
-    Definition fallback mode keeps the always-bad stems blocked, but allows
-    definition/term questions when the PDF is mostly definitions.
-    """
+def is_bad_mcq_question_stem(question_text: str) -> bool:
+    """Reject weak memorization stems that usually produce ambiguous MCQs."""
     text = str(question_text or "").strip().lower()
     if not text:
         return True
-
-    if any(re.search(pattern, text, flags=re.I) for pattern in BAD_QUESTION_STEM_ALWAYS_PATTERNS):
-        return True
-
-    if allow_definition_fallback:
-        return False
-
-    return any(re.search(pattern, text, flags=re.I) for pattern in BAD_QUESTION_STEM_DEFINITION_PATTERNS)
+    return any(re.search(pattern, text, flags=re.I) for pattern in BAD_QUESTION_STEM_PATTERNS)
 
 
 def other_option_supported_by_same_evidence(q: Dict[str, Any], evidence_texts: Dict[str, str]) -> bool:
@@ -1710,7 +1681,7 @@ def coerce_mcq_json_shape(data: Dict[str, Any]) -> Dict[str, Any]:
     return {"questions": clean_questions}
 
 
-def validate_mcq_json_data(data: Dict[str, Any], context: str = "", allow_definition_fallback: bool = False) -> Tuple[Dict[str, Any], set]:
+def validate_mcq_json_data(data: Dict[str, Any], context: str = "") -> Tuple[Dict[str, Any], set]:
     """Deterministic validation for structured MCQ candidates.
 
     Paper-inspired safety checks:
@@ -1754,7 +1725,7 @@ def validate_mcq_json_data(data: Dict[str, Any], context: str = "", allow_defini
             bad.add(idx)
             continue
 
-        if is_bad_mcq_question_stem(question_text, allow_definition_fallback=allow_definition_fallback):
+        if is_bad_mcq_question_stem(question_text):
             bad.add(idx)
             continue
 
@@ -1810,7 +1781,7 @@ def validate_mcq_json_data(data: Dict[str, Any], context: str = "", allow_defini
             bad.add(idx)
             continue
 
-        if context and not allow_definition_fallback and other_option_supported_by_same_evidence(q, evidence_texts):
+        if context and other_option_supported_by_same_evidence(q, evidence_texts):
             bad.add(idx)
             continue
 
@@ -1983,19 +1954,9 @@ def normalize_mcq_data_before_validation(data: Dict[str, Any]) -> Dict[str, Any]
     return data
 
 
-def generate_mcq_json_once(context: str, user_request: str, selected_model: str, allow_definition_fallback: bool = False) -> Optional[Dict[str, Any]]:
+def generate_mcq_json_once(context: str, user_request: str, selected_model: str) -> Optional[Dict[str, Any]]:
     """Generate a structured MCQ quiz as JSON using Ollama JSON Schema mode first."""
     schema = get_mcq_json_schema()
-    definition_fallback_instruction = (
-        "- DEFINITION FALLBACK MODE is ON because strict generation did not reach 5 valid MCQs. "
-        "You may create definition/term-understanding questions ONLY when the answer is directly stated in one evidence chunk. "
-        "Prefer stems like: 'Which description best matches X according to [E1]?' or "
-        "'How is X characterized in [E1]?' Avoid raw 'Define X' wording when possible. "
-        "Use short description options, not grouped options.\n"
-        if allow_definition_fallback
-        else "- Avoid memorization stems: primary goal, main purpose, main idea, define, what is one common application.\n"
-    )
-
     prompt_text = f"""You are a strict PDF-based exam-question generator.
 
 Use ONLY these evidence chunks. Each chunk has an ID like [E1].
@@ -2033,7 +1994,8 @@ Quality requirements:
 - Do not use outside knowledge or general knowledge.
 - Do not write: although not stated, can be inferred, can be considered, generally, in practice.
 - Do not create vague questions like "what is the main idea" unless the evidence clearly states it.
-{definition_fallback_instruction}- Do not make a question where more than one option is explicitly supported by the same evidence.
+- Avoid memorization stems: primary goal, main purpose, main idea, define, what is one common application.
+- Do not make a question where more than one option is explicitly supported by the same evidence.
 
 Return ONLY valid JSON matching this schema:
 {json.dumps(schema, ensure_ascii=False)}"""
@@ -2951,64 +2913,6 @@ def generate_structured_mcq_quiz(context: str, user_request: str, selected_model
             return format_mcq_json_for_display(selected_data)
 
         retry_note = summarize_bad_attempt_for_retry(data, bad_numbers)
-
-    # Definition-heavy fallback:
-    # Run ONLY if the normal strict pipeline failed to reach 5. This keeps the
-    # strong behavior on large PDFs unchanged, while rescuing small PDFs that are
-    # mostly vocabulary/definitions.
-    if MCQ_ALLOW_DEFINITION_FALLBACK and best_valid_count < MCQ_FINAL_COUNT:
-        logger.info("Strict MCQ pipeline did not reach 5; running definition-heavy fallback")
-
-        definition_retry_note = retry_note
-        for attempt in range(1, MCQ_DEFINITION_FALLBACK_RETRIES + 1):
-            request_for_attempt = (
-                user_request
-                + "\n\nDefinition-heavy fallback rule:\n"
-                "If the PDF content is mostly definitions or terms, create grounded "
-                "term/definition-understanding MCQs. Keep every answer tied to one evidence ID. "
-                "Do not use outside knowledge. Do not use All/None/Both options."
-            )
-
-            if definition_retry_note:
-                request_for_attempt += (
-                    "\n\nAvoid these previously rejected candidates:\n"
-                    f"{definition_retry_note}\n"
-                    "Create different questions from other evidence chunks."
-                )
-
-            data = generate_mcq_json_once(
-                context,
-                request_for_attempt,
-                selected_model,
-                allow_definition_fallback=True,
-            )
-
-            if not data:
-                logger.warning(f"Definition fallback attempt {attempt}: no structured JSON returned")
-                continue
-
-            data, bad_numbers = validate_mcq_json_data(
-                data,
-                context=context,
-                allow_definition_fallback=True,
-            )
-            selected_data = select_valid_mcq_questions(data, bad_numbers, needed=MCQ_FINAL_COUNT)
-            valid_count = len(selected_data.get("questions", []))
-
-            logger.info(
-                f"Definition fallback attempt {attempt}: bad={sorted(bad_numbers)} "
-                f"valid_kept={valid_count}/{MCQ_FINAL_COUNT}"
-            )
-
-            if valid_count > best_valid_count:
-                best_data = selected_data
-                best_valid_count = valid_count
-
-            if valid_count >= MCQ_FINAL_COUNT:
-                logger.info("Definition fallback returned 5 validated MCQs")
-                return format_mcq_json_for_display(selected_data)
-
-            definition_retry_note = summarize_bad_attempt_for_retry(data, bad_numbers)
 
     # If structured JSON could not produce 5 valid questions, use the bounded free-text fallback.
     # This prevents the UI from showing "could not generate" when Ollama schema mode fails.
