@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ScreenRecorderMenu from "../components/ScreenRecorderMenu";
 const PDF_RAG_URL = "http://127.0.0.1:8016";
@@ -826,7 +826,7 @@ export default function QuizPage() {
   const navigate = useNavigate();
 
   const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedModel, setSelectedModel] = useState("llama3.2:3b");
+  const [selectedModel, setSelectedModel] = useState("qwen2.5:1.5b");
   const [customPrompt, setCustomPrompt] = useState("");
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -1229,7 +1229,7 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
             );
 
           const hasOptionA =
-            /\n\s*(?:[-*-]\s*)?A\s*[.)]/i.test(text);
+            /\n\s*(?:[-*•]\s*)?A\s*[.)]/i.test(text);
 
           const hasCorrect = /Correct\s*answer\s*:/i.test(text);
 
@@ -1284,15 +1284,6 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
 
       const responseData = quizData ?? {};
 
-      if (Array.isArray(responseData?.questions) && responseData.questions.length === 5) {
-        const generatedQuiz = serializeQuizForStorage(responseData.questions);
-        setQuizText(generatedQuiz);
-        setError("");
-        setStatus("Quiz generated successfully.");
-        setLoading(false);
-        return;
-      }
-
       console.log("QUERY RESPONSE", responseData);
       console.log("RAW RESPONSE SHAPE", describeResponseShape(responseData));
       console.log("RESPONSE SHAPE res.data", describeResponseShape(responseData));
@@ -1341,20 +1332,7 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
       console.log("ANSWER LENGTH", answer.length);
       console.log("SOURCES COUNT", responseData?.sources?.length ?? 0);
 
-      let extractedQuiz = extractQuizPayload(responseData);
-
-      if (answer && extractedQuiz.parsed.questions.length !== 5) {
-        const answerParsed = parseMcqQuizWithReason(answer);
-
-        if (answerParsed.questions.length > extractedQuiz.parsed.questions.length) {
-          extractedQuiz = {
-            path: ["answer"],
-            payload: answer,
-            parsed: answerParsed,
-          };
-        }
-      }
-
+      const extractedQuiz = extractQuizPayload(responseData);
       const rawQuizPayload = extractedQuiz.payload;
 
       if (
@@ -2238,7 +2216,7 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
         
 <div className="streamlit-topbar">
   <div className="topbar-left">
-    <button className="collapse-icon" type="button"></button>
+    <button className="collapse-icon" type="button">›</button>
     <span>StudyFlow PDF Quiz</span>
   </div>
 
@@ -2248,7 +2226,7 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
     type="button"
     onClick={() => setMenuOpen((prev) => !prev)}
   >
-    Menu
+    ⋮
   </button>
 
   {menuOpen && (
@@ -2288,7 +2266,7 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
 
             {selectedFile && (
               <div className="pdf-expander" title={selectedFile.name}>
-                 {selectedFile.name}
+                › {selectedFile.name}
               </div>
             )}
 
@@ -2332,7 +2310,7 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
           </aside>
 
           <main className="main-workspace">
-            <h1 className="page-title">StudyFlow Quiz Challenge</h1>
+            <h1 className="page-title">Ollama PDF RAG playground</h1>
 
             <div className="main-grid">
               <section className="left-column">
@@ -2352,14 +2330,14 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
                     handleFile(e.dataTransfer.files?.[0]);
                   }}
                 >
-                  <div className="cloud-icon">â˜</div>
+                  <div className="cloud-icon">☁</div>
 
                   <div>
                     <div className="upload-main-text">
                       Drag and drop<br />files here
                     </div>
                     <div className="upload-sub-text">
-                      Limit 200MB per file - PDF
+                      Limit 200MB per file • PDF
                     </div>
                   </div>
 
@@ -2379,14 +2357,14 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
                 {selectedFile ? (
                   <>
                     <div className="file-pill">
-                      <div className="file-icon"></div>
+                      <div className="file-icon">▣</div>
                       <div>
                         <strong>{selectedFile.name}</strong>
                         <small>{(selectedFile.size / (1024 * 1024)).toFixed(1)}MB</small>
                       </div>
                     </div>
 
-                    <div className="plus-line"></div>
+                    <div className="plus-line">＋</div>
                   </>
                 ) : (
                   <div className="info-box">
@@ -2443,12 +2421,26 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
               </section>
 
               <section className="right-column">
-              
+                <label className="model-label">
+                  Pick a model available locally on your system
+                </label>
+
+                <select
+                  className="model-select"
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  disabled={loading}
+                >
+                  <option value="qwen2.5:1.5b">qwen2.5:1.5b (Recommended)</option>
+                  <option value="llama3.2:3b">llama3.2:3b</option>
+                  <option value="qwen3:1.7b">qwen3:1.7b</option>
+                  <option value="phi3:mini">phi3:mini</option>
+                </select>
 
                 <div className="chat-panel">
                   {loading ? (
                     <div className="chat-loading">
-                      <span className="bot-icon">AI</span>
+                      <span className="bot-icon">🤖</span>
                       <span>processing...</span>
                     </div>
                   ) : quizText ? (
@@ -2522,10 +2514,10 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
                                     }
                                   >
                                     {isCorrect ? (
-                                      <strong>Correct </strong>
+                                      <strong>Correct ✅</strong>
                                     ) : (
                                       <strong>
-                                        Correct answer: {correctLetter}
+                                        Wrong ❌ Correct answer: {correctLetter}
                                       </strong>
                                     )}
 
@@ -2591,7 +2583,7 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
                         </div>
                       ) : (
                         <div className="warning-box">
-                          <span className="bot-icon"></span>
+                          <span className="bot-icon">🤖</span>
                           <span>
                             Quiz generated, but the format was invalid. Please click Regenerate Quiz.
                           </span>
@@ -2607,14 +2599,14 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
                   ) : selectedFile ? (
                     <div className="chat-empty">
                       <div className="warning-box">
-                        <span className="bot-icon"></span>
+                        <span className="bot-icon">🤖</span>
                         <span>Click Generate Quiz to create 5 MCQs from the uploaded PDF.</span>
                       </div>
                     </div>
                   ) : (
                     <div className="chat-empty">
                       <div className="warning-box">
-                        <span className="bot-icon"></span>
+                        <span className="bot-icon">🤖</span>
                         <span>Please upload PDF files first.</span>
                       </div>
                     </div>
@@ -2655,7 +2647,7 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
                       disabled={loading || !selectedFile}
                       title="Generate quiz"
                     >
-                      Generate
+                      ↑
                     </button>
                   </div>
 
@@ -2671,7 +2663,3 @@ ${customPrompt.trim() ? `- Focus topic: ${customPrompt.trim()}` : ""}
     </div>
   );
 }
-
-
-
-

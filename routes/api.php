@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\Admin\AdminNotesController;
 use App\Http\Controllers\Api\LinkSummaryController;
 use App\Http\Controllers\Api\AiConversationController;
 use App\Http\Controllers\ApiAiController;
+use App\Http\Controllers\LocalSubjectiveQuizController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,7 +38,7 @@ Route::get('/ping', function () {
 | Feedback
 |--------------------------------------------------------------------------
 */
-
+Route::post('/local-ai/subjective/file', [LocalSubjectiveQuizController::class, 'generateFromFile']);
 Route::get('/feedback/recent', [FeedbackController::class, 'recent']);
 
 Route::middleware('auth:sanctum')->group(function () {
